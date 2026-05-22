@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emprendados SRA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Lato:wght@300;400;700&display=swap');
+:root {
+  --navy:#002060;--navy2:#003090;--gold:#ffffff;--gold2:#e8eef8;
+  --cream:#f4f7fb;--light:#e8eef8;--border:#b8c8e0;--text:#000000;
+  --mid:#002060;--green:#2E7D32;--red:#C62828;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Lato',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;text-transform:uppercase;}
+
+/* ══ LOGIN ══ */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy);position:relative;overflow:hidden;}
+.login-wrap::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(255,255,255,.06) 0%,transparent 60%);}
+.login-box{background:#fff;border-radius:12px;padding:36px 44px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.5);border-top:5px solid var(--navy);position:relative;z-index:1;}
+.login-logo{font-family:'Cinzel',serif;font-size:1.4rem;color:var(--navy);text-align:center;margin-bottom:2px;letter-spacing:.06em;text-transform:uppercase;font-weight:900;}
+.login-logo span{color:var(--navy);}
+.login-sub{text-align:center;font-size:.68rem;color:#666;letter-spacing:.16em;text-transform:uppercase;margin-bottom:20px;font-weight:700;}
+.login-roles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.role-btn{padding:16px 10px;border:2px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-family:'Lato',sans-serif;font-size:.75rem;font-weight:700;color:var(--navy);transition:all .18s;text-align:center;text-transform:uppercase;letter-spacing:.08em;}
+.role-btn:hover{border-color:var(--navy);background:var(--light);}
+.role-btn.selected{border-color:var(--navy);background:var(--navy);color:#fff;}
+.role-btn .role-icon{font-size:1.4rem;display:block;margin-bottom:6px;}
+.pin-wrap{margin-bottom:20px;}
+.pin-label{font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:#555;margin-bottom:8px;font-weight:700;}
+.pin-input{width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:6px;font-family:'Lato',sans-serif;font-size:1.1rem;letter-spacing:.3em;text-align:center;outline:none;transition:border-color .15s;}
+.pin-input:focus{border-color:var(--navy);}
+.login-err{color:var(--red);font-size:.75rem;text-align:center;margin-bottom:12px;min-height:18px;text-transform:uppercase;font-weight:700;}
+.btn-login{width:100%;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-family:'Lato',sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:background .18s;}
+.btn-login:hover{background:var(--navy2);}
+
+/* ══ TOPBAR ══ */
+.topbar{background:var(--navy);padding:10px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:3px solid rgba(255,255,255,.25);position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.45);}
+.topbar-left h1{font-family:'Cinzel',serif;font-size:1.1rem;color:#fff;letter-spacing:.1em;text-transform:uppercase;}
+.topbar-left h1 span{color:#fff;}
+.topbar-left p{color:rgba(255,255,255,.4);font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;margin-top:2px;}
+.topbar-right{display:flex;gap:8px;align-items:center;}
+.role-badge{padding:4px 12px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.role-badge.admin{background:#fff;color:var(--navy);}
+.role-badge.caballos{background:#1D9E75;color:#fff;}
+.role-badge.aperos{background:#534AB7;color:#fff;}
+.role-badge.lectura{background:#666;color:#fff;}
+
+/* ══ EVENT TABS ══ */
+.event-tabs{background:var(--navy);border-bottom:2px solid rgba(255,255,255,.2);display:flex;overflow-x:auto;gap:0;}
+.etab{padding:10px 20px;border:none;background:none;color:rgba(255,255,255,.5);font-family:'Lato',sans-serif;font-size:.76rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap;}
+.etab:hover{color:#fff;background:rgba(255,255,255,.05);}
+.etab.active{color:#fff;border-bottom-color:#fff;}
+.etab.palermo{color:#b8cce8;}
+.etab.palermo.active{color:#fff;border-bottom-color:#fff;}
+.etab-name-input{background:transparent;border:none;border-bottom:1.5px solid #fff;color:#fff;font-family:'Lato',sans-serif;font-size:.76rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;outline:none;width:120px;text-align:center;padding:1px 4px;}
+.etab .edit-hint{font-size:.52rem;color:rgba(255,255,255,.2);display:block;text-align:center;margin-top:1px;}
+
+/* ══ LAYOUT ══ */
+.layout{display:flex;height:calc(100vh - 115px);}
+.sidebar{width:230px;min-width:230px;background:#fff;border-right:1px solid var(--border);overflow-y:auto;padding:10px 0;}
+.sidebar-section{font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:#aaa;padding:10px 14px 6px;font-weight:700;}
+.mode-tabs{display:flex;border-bottom:1px solid var(--border);}
+.modetab{flex:1;padding:9px 4px;border:none;background:none;font-family:'Lato',sans-serif;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;color:#aaa;border-bottom:2px solid transparent;transition:all .2s;}
+.modetab.active{color:var(--navy);border-bottom-color:var(--navy);}
+.catbtn{width:100%;text-align:left;padding:7px 14px;border:none;background:none;cursor:pointer;font-family:'Lato',sans-serif;font-size:.75rem;color:var(--mid);transition:all .15s;border-left:3px solid transparent;display:flex;justify-content:space-between;align-items:center;gap:4px;}
+.catbtn:hover{background:var(--light);color:var(--navy);}
+.catbtn.active{background:var(--light);color:var(--navy);font-weight:700;border-left-color:var(--navy);}
+.badge{font-size:.62rem;padding:1px 6px;border-radius:8px;background:#eee;color:#888;font-weight:700;white-space:nowrap;}
+.catbtn.active .badge{background:var(--navy);color:#fff;}
+.catbtn.has-scores .badge{background:var(--green);color:#fff;}
+
+/* ══ MAIN ══ */
+.main{flex:1;overflow-y:auto;padding:20px 26px;background:var(--cream);}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border);}
+.page-header h2{font-family:'Cinzel',serif;font-size:1rem;color:var(--navy);}
+.page-header p{font-size:.7rem;color:#999;margin-top:2px;}
+.page-header-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ══ BUTTONS ══ */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:4px;border:none;font-family:'Lato',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .18s;}
+.btn-gold{background:#fff;color:var(--navy);border:1.5px solid var(--navy);}
+.btn-gold:hover{background:var(--light);}
+.btn-navy{background:var(--navy);color:#fff;}
+.btn-navy:hover{background:var(--navy2);}
+.btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy);}
+.btn-ghost:hover{background:var(--navy);color:#fff;}
+.btn-danger{background:#ffebee;color:var(--red);border:1.5px solid #ffcdd2;}
+.btn-sm{padding:4px 10px;font-size:.66rem;}
+.btn-xs{padding:2px 7px;font-size:.6rem;}
+
+/* ══ TABLE ══ */
+.table-wrap{overflow-x:auto;border-radius:6px;box-shadow:0 1px 8px rgba(0,0,0,.08);}
+table{width:100%;border-collapse:collapse;background:#fff;font-size:.76rem;}
+thead tr{background:var(--navy);}
+thead th{padding:8px 6px;color:#fff;font-weight:700;font-size:.65rem;letter-spacing:.05em;text-transform:uppercase;text-align:center;border-right:1px solid rgba(255,255,255,.1);white-space:nowrap;}
+tbody tr{border-bottom:1px solid #f0ebe3;transition:background .1s;}
+tbody tr:hover{background:#fdf7ed;}
+tbody td{padding:6px 6px;vertical-align:middle;text-align:center;}
+tbody td.left{text-align:left;}
+.num-cell{font-weight:700;color:var(--navy);font-size:.72rem;}
+.name-cell{font-weight:700;text-align:left;}
+.empty-row td{color:#ddd;font-style:italic;}
+.score-input{width:50px;border:1px solid #ddd;border-radius:3px;padding:3px 4px;text-align:center;font-family:'Lato',sans-serif;font-size:.76rem;outline:none;transition:border-color .15s;}
+.score-input:focus{border-color:var(--navy);background:#eef2ff;}
+.score-input:disabled{background:#f5f5f5;color:#bbb;cursor:not-allowed;}
+.score-input.over{border-color:var(--red);background:#ffebee;}
+.total-cell{font-weight:700;color:var(--navy);font-size:.82rem;}
+.rank-cell{font-weight:900;font-size:.88rem;}
+.rank-1{color:var(--navy);font-weight:900;}.rank-2{color:#555;}.rank-3{color:#333;}
+.obs-input{width:100%;min-width:90px;border:1px solid #ddd;border-radius:3px;padding:3px 5px;font-family:'Lato',sans-serif;font-size:.7rem;outline:none;}
+.subtotal-cell{background:#f5f5f5;font-weight:700;color:var(--mid);}
+.jury-header{background:#e8f0fe !important;color:var(--navy) !important;font-style:italic;}
+
+/* ══ SLOTS BAR ══ */
+.slots-bar{background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.slots-bar label{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#888;font-weight:700;}
+.slots-input{width:58px;border:1.5px solid var(--border);border-radius:4px;padding:4px 6px;font-family:'Lato',sans-serif;font-size:.85rem;font-weight:700;color:var(--navy);text-align:center;outline:none;}
+.slots-input:focus{border-color:var(--navy);}
+.slots-bar p{font-size:.68rem;color:#aaa;margin-left:auto;}
+
+/* ══ SYNC STATUS ══ */
+.sync-bar{background:var(--navy);padding:4px 24px;display:flex;align-items:center;gap:8px;font-size:.65rem;color:rgba(255,255,255,.5);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#666;}
+.sync-dot.online{background:#2E7D32;animation:pulse 2s infinite;}
+.sync-dot.syncing{background:#fff;animation:pulse .5s infinite;}
+.sync-dot.offline{background:#666;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ══ PALERMO ══ */
+.palermo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.palermo-card{background:#fff;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:hidden;border-top:3px solid var(--navy);}
+.palermo-card.has-data{border-top-color:var(--green);}
+.palermo-card-header{background:var(--navy);color:#fff;padding:9px 12px;}
+.palermo-card-header h3{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.04em;}
+.palermo-card-header p{font-size:.62rem;color:rgba(255,255,255,.5);margin-top:1px;}
+.palermo-row{display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid #f5f0e8;gap:8px;}
+.palermo-row:last-child{border-bottom:none;}
+.palermo-num{font-weight:900;color:var(--navy);font-size:.72rem;width:18px;text-align:center;}
+.palermo-name{flex:1;font-weight:700;font-size:.76rem;}
+.palermo-etapas{display:flex;gap:3px;}
+.etapa-dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.52rem;font-weight:700;}
+.etapa-dot.participó{background:var(--green);color:#fff;}
+.etapa-dot.no{background:#eee;color:#bbb;}
+.palermo-empty{padding:20px;text-align:center;color:#bbb;font-size:.76rem;}
+
+/* ══ MODAL ══ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:300;padding:20px;}
+.overlay.hidden{display:none;}
+.modal{background:#fff;border-radius:8px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);border-top:4px solid var(--navy);overflow:hidden;}
+.modal-header{background:var(--navy);color:#fff;padding:16px 22px;}
+.modal-header h3{font-family:'Cinzel',serif;font-size:.95rem;}
+.modal-header p{font-size:.68rem;color:rgba(255,255,255,.5);margin-top:2px;}
+.modal-body{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:12px;max-height:60vh;overflow-y:auto;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:#888;font-weight:700;}
+.field input,.field select{padding:7px 9px;border:1.5px solid #ddd;border-radius:4px;font-family:'Lato',sans-serif;font-size:.8rem;outline:none;transition:border-color .15s;}
+.field input:focus,.field select:focus{border-color:var(--navy);}
+.modal-footer{padding:14px 22px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);}
+
+/* ══ ADMIN PANEL ══ */
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+.admin-card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.08);border-top:3px solid var(--navy);border-left:1px solid var(--border);}
+.admin-card h3{font-family:'Cinzel',serif;font-size:.9rem;color:var(--navy);margin-bottom:14px;}
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f0e8;gap:8px;}
+.user-row:last-child{border-bottom:none;}
+.user-info{flex:1;}
+.user-info .user-name{font-weight:700;font-size:.8rem;}
+.user-info .user-role{font-size:.68rem;color:#888;margin-top:1px;}
+.user-pin{font-family:monospace;background:#f5f5f5;padding:2px 8px;border-radius:4px;font-size:.75rem;color:var(--navy);}
+
+/* ══ TOAST ══ */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:6px;font-size:.78rem;border-left:4px solid #fff;transform:translateY(60px);opacity:0;transition:all .28s;z-index:400;text-transform:uppercase;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ══ READONLY OVERLAY ══ */
+.readonly-notice{background:#eef2f8;border:1px solid var(--navy);border-radius:6px;padding:8px 14px;margin-bottom:12px;font-size:.72rem;color:var(--navy);display:flex;align-items:center;gap:8px;font-weight:700;text-transform:uppercase;}
+
+/* ══ IMPORTADO BADGE ══ */
+.imported-badge{display:inline-flex;align-items:center;gap:3px;background:#e3f2fd;color:#1565C0;padding:2px 8px;border-radius:10px;font-size:.62rem;font-weight:700;letter-spacing:.04em;}
+.imported-row td{background:#f5faff !important;}
+.imported-row:hover td{background:#ebf4ff !important;}
+.total-importado{font-weight:900;color:#1565C0;font-size:.9rem;}
+.imported-info{font-size:.66rem;color:#888;font-style:italic;margin-top:1px;}
+
+@media(max-width:640px){.sidebar{display:none;}.layout{display:block;}.main{padding:14px;}}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen" class="login-wrap">
+  <div class="login-box">
+    <!-- Logo SRA -->
+    <div style="display:flex;justify-content:center;margin-bottom:14px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="90" height="90" style="color:var(--navy)">
+        <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" stroke-width="5"/>
+        <circle cx="100" cy="100" r="85" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <circle cx="100" cy="100" r="79" fill="none" stroke="currentColor" stroke-width="1"/>
+        <path id="arc-top" d="M 22,100 A 78,78 0 0,1 178,100" fill="none"/>
+        <text font-size="9.5" font-family="serif" font-weight="700" fill="currentColor" letter-spacing="2.2">
+          <textPath href="#arc-top" startOffset="50%" text-anchor="middle">CULTIVAR EL SUELO ES SERVIR A LA PATRIA</textPath>
+        </text>
+        <path id="arc-bot" d="M 35,130 A 78,78 0 0,0 165,130" fill="none"/>
+        <text font-size="10" font-family="serif" font-weight="700" fill="currentColor" letter-spacing="1">
+          <textPath href="#arc-bot" startOffset="50%" text-anchor="middle">· · · · · · · · · · · · · · · ·</textPath>
+        </text>
+        <text x="100" y="107" text-anchor="middle" font-family="serif" font-size="40" font-weight="900" fill="currentColor" letter-spacing="-1">SRA</text>
+        <rect x="64" y="138" width="72" height="20" rx="2" fill="currentColor"/>
+        <text x="100" y="153" text-anchor="middle" font-family="serif" font-size="12" font-weight="700" fill="#fff" letter-spacing="2">1866</text>
+      </svg>
+    </div>
+    <div class="login-logo">Emprendados</div>
+    <div class="login-sub">Concurso Nacional de Aperos · SRA</div>
+    <div class="login-roles" style="grid-template-columns:1fr 1fr;max-width:260px;margin:0 auto 20px">
+      <button class="role-btn" onclick="selectRole('admin')" id="role-admin">
+        <span class="role-icon">👑</span>Admin
+      </button>
+      <button class="role-btn" onclick="selectRole('lectura')" id="role-lectura">
+        <span class="role-icon">👁</span>Solo Lectura
+      </button>
+    </div>
+    <div class="pin-wrap">
+      <div class="pin-label">PIN de acceso</div>
+      <input type="password" class="pin-input" id="pin-input" maxlength="6" placeholder="• • • • • •"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <button class="btn-login" onclick="doLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app" style="display:none">
+  <div class="topbar">
+    <div class="topbar-left" style="display:flex;align-items:center;gap:12px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="38" height="38" style="color:#fff;flex-shrink:0">
+        <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" stroke-width="6"/>
+        <circle cx="100" cy="100" r="84" fill="none" stroke="currentColor" stroke-width="1"/>
+        <path id="arc-t2" d="M 22,100 A 78,78 0 0,1 178,100" fill="none"/>
+        <text font-size="9" font-family="serif" font-weight="700" fill="currentColor" letter-spacing="2">
+          <textPath href="#arc-t2" startOffset="50%" text-anchor="middle">CULTIVAR EL SUELO ES SERVIR A LA PATRIA</textPath>
+        </text>
+        <text x="100" y="107" text-anchor="middle" font-family="serif" font-size="40" font-weight="900" fill="currentColor" letter-spacing="-1">SRA</text>
+        <rect x="64" y="136" width="72" height="20" rx="2" fill="currentColor"/>
+        <text x="100" y="151" text-anchor="middle" font-family="serif" font-size="12" font-weight="700" fill="var(--navy)" letter-spacing="2">1866</text>
+      </svg>
+      <div>
+        <h1>Emprendados</h1>
+        <p>Concurso Nacional de Aperos · SRA</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="role-badge" id="role-badge"></span>
+      <button class="btn btn-ghost" style="color:#fff;border-color:rgba(255,255,255,.3);font-size:.65rem" onclick="doLogout()">Salir</button>
+      <button class="btn btn-gold btn-sm" id="btn-export" onclick="exportCurrentEvent()" style="display:none">⬇ Excel</button>
+      <button class="btn btn-navy btn-sm" id="btn-import" onclick="openImportModal()" style="display:none;border:1.5px solid rgba(255,255,255,.3)">📥 Importar</button>
+    </div>
+  </div>
+  <div class="sync-bar">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span id="sync-label">Conectando...</span>
+    <span style="margin-left:auto;opacity:.4" id="sync-time"></span>
+  </div>
+  <div class="event-tabs" id="event-tabs"></div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="mode-tabs" id="mode-tabs-wrap">
+        <button class="modetab active" id="tab-insc" onclick="setMode('inscripcion')">Inscripción</button>
+        <button class="modetab" id="tab-punt" onclick="setMode('puntajes')">Puntajes</button>
+      </div>
+      <div id="sidebar-content"></div>
+    </aside>
+    <main class="main" id="main-area"></main>
+  </div>
+</div>
+
+<!-- Modal inscripción -->
+<div class="overlay hidden" id="modal-insc">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="minsc-title">Agregar Inscripto</h3>
+      <p id="minsc-sub"></p>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="Apellido"></div>
+      <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Nombre"></div>
+      <div class="field"><label>Nombre Ejemplar</label><input id="f-ejemplar" placeholder="Nombre del caballo"></div>
+      <div class="field"><label>Teléfono</label><input id="f-tel" placeholder="Teléfono"></div>
+      <div class="field full"><label>Mail</label><input id="f-mail" type="email" placeholder="correo@ejemplo.com"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-insc')">Cancelar</button>
+      <button class="btn btn-gold" onclick="saveInscripto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar Clasificatorias -->
+<div class="overlay hidden" id="modal-import">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h3>Importar Clasificatorias</h3>
+      <p>Cargá resultados de etapas pasadas — Temporada Ago 2025 / Jul 2026</p>
+    </div>
+    <div class="modal-body" style="display:block;padding:0">
+      <!-- Tabs -->
+      <div style="display:flex;border-bottom:2px solid var(--border)">
+        <button class="modetab active" id="imp-tab-excel" onclick="switchImportTab('excel')" style="flex:1;padding:11px 8px">📊 Desde Excel</button>
+        <button class="modetab" id="imp-tab-sample" onclick="switchImportTab('sample')" style="flex:1;padding:11px 8px">🧪 Datos de prueba</button>
+      </div>
+
+      <!-- Panel Excel -->
+      <div id="imp-panel-excel" style="padding:18px 20px">
+        <p style="font-size:.72rem;color:#888;margin-bottom:10px">
+          El archivo debe tener estas columnas: <strong>Etapa · Categoría · Apellido · Nombre · Ejemplar · Tel · Mail · Puntaje</strong>
+        </p>
+        <div style="margin-bottom:12px">
+          <button class="btn btn-ghost btn-sm" onclick="downloadImportTemplate()">⬇ Descargar plantilla Excel</button>
+        </div>
+        <div class="field full" style="margin-bottom:10px">
+          <label>Archivo Excel (.xlsx / .xls)</label>
+          <input type="file" id="import-file" accept=".xlsx,.xls"
+            onchange="previewImport(this)"
+            style="padding:8px;border:1.5px dashed var(--border);border-radius:4px;font-size:.76rem;cursor:pointer">
+        </div>
+        <div id="import-preview"></div>
+        <div style="margin-top:12px;padding:8px 10px;background:#eef2f8;border-left:3px solid var(--navy);border-radius:3px;font-size:.68rem;color:var(--navy)">
+          <strong>Columna Etapa:</strong> usá 1, 2, 3 ó 4 (o E1…E4).
+          <strong>Columna Categoría:</strong> usá el ID (ej: <em>catB</em>, <em>lomT</em>) o el nombre completo.
+        </div>
+      </div>
+
+      <!-- Panel Datos de prueba -->
+      <div id="imp-panel-sample" style="display:none;padding:18px 20px">
+        <p style="font-size:.72rem;color:#888;margin-bottom:12px">
+          Cargá participantes de prueba en las 4 etapas clasificatorias, con puntajes realistas para testear la clasificación a Palermo.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="padding:10px;background:var(--light);border-radius:6px;font-size:.7rem;border-left:3px solid var(--navy)">
+            <strong>Etapa 1</strong><br>Expo Rural Córdoba<br><span style="color:#888">Agosto 2025</span>
+          </div>
+          <div style="padding:10px;background:var(--light);border-radius:6px;font-size:.7rem;border-left:3px solid var(--navy)">
+            <strong>Etapa 2</strong><br>Rural del Litoral<br><span style="color:#888">Septiembre 2025</span>
+          </div>
+          <div style="padding:10px;background:var(--light);border-radius:6px;font-size:.7rem;border-left:3px solid var(--navy)">
+            <strong>Etapa 3</strong><br>Expo Pampeana<br><span style="color:#888">Noviembre 2025</span>
+          </div>
+          <div style="padding:10px;background:var(--light);border-radius:6px;font-size:.7rem;border-left:3px solid var(--navy)">
+            <strong>Etapa 4</strong><br>Rural Patagónica<br><span style="color:#888">Marzo 2026</span>
+          </div>
+        </div>
+        <div style="padding:10px;background:#e8f5e9;border-radius:6px;font-size:.72rem;color:#2E7D32">
+          ✓ Se cargarán ~10 participantes por categoría por etapa con puntajes variados. Las etapas recibirán los nombres indicados arriba. Los datos existentes <strong>no se borran</strong>, se agregan.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div id="import-progress" style="font-size:.72rem;color:#888;margin-right:auto;align-self:center;display:none">Importando...</div>
+      <button class="btn btn-ghost" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-gold" id="btn-do-import" onclick="doImport()">Importar datos</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// SUPABASE CONFIG
+// ══════════════════════════════════════════
+const SUPA_URL = 'https://vedbmbicyrjqngzdfhef.supabase.co';
+const SUPA_KEY = 'sb_publishable_Do6L40Qt2Ep37U2w31NTCw_EEssN8Ob';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+// ══════════════════════════════════════════
+// ROLES & PINS
+// ══════════════════════════════════════════
+const ROLES = {
+  admin:    { pin:'2026',  label:'Administrador', badge:'admin',    canEdit:true,  canScore:true,  allCols:true },
+  caballos: { pin:'cab1',  label:'Jurado Caballos',badge:'caballos',canEdit:false, canScore:'caballos', allCols:false },
+  aperos:   { pin:'ape1',  label:'Jurado Aperos',  badge:'aperos',  canEdit:false, canScore:'aperos',   allCols:false },
+  lectura:  { pin:'ver1',  label:'Solo lectura',   badge:'lectura', canEdit:false, canScore:false,  allCols:true },
+};
+let curRole = null;
+
+function selectRole(r){
+  curRole=r;
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('role-'+r).classList.add('selected');
+  document.getElementById('pin-input').focus();
+  document.getElementById('login-err').textContent='';
+}
+
+function doLogin(){
+  if(!curRole){ document.getElementById('login-err').textContent='Seleccioná un rol primero.'; return; }
+  const pin=document.getElementById('pin-input').value.trim();
+  if(pin!==ROLES[curRole].pin){ document.getElementById('login-err').textContent='PIN incorrecto. Intentá de nuevo.'; document.getElementById('pin-input').value=''; return; }
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const role=ROLES[curRole];
+  const badge=document.getElementById('role-badge');
+  badge.textContent=role.label;
+  badge.className='role-badge '+role.badge;
+  if(role.canEdit){
+    document.getElementById('btn-export').style.display='';
+    document.getElementById('btn-import').style.display='';
+  }
+  initApp();
+}
+
+function doLogout(){
+  curRole=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('pin-input').value='';
+  document.getElementById('login-err').textContent='';
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+}
+
+// ══════════════════════════════════════════
+// DATA CONFIG
+// ══════════════════════════════════════════
+const EVENTS=[
+  {id:'e1',name:'Etapa 1',palermo:false},
+  {id:'e2',name:'Etapa 2',palermo:false},
+  {id:'e3',name:'Etapa 3',palermo:false},
+  {id:'e4',name:'Etapa 4',palermo:false},
+  {id:'e5',name:'Final Palermo',palermo:true},
+];
+const CATEGORIES=[
+  {id:'catB',  name:'Caballo de Trabajo B',             short:'Cab. Trabajo B',   slots:30,type:'caballo_b',minPts:60,maxClasif:3},
+  {id:'catA',  name:'Caballo de Trabajo A',             short:'Cab. Trabajo A',   slots:30,type:'caballo_a',minPts:70,maxClasif:3},
+  {id:'lomT',  name:'Lomillo de Sogas Trenzadas',       short:'Lomillo Soga Tren',slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'lomL',  name:'Lomillo de Soga Lezna/Barquero',  short:'Lomillo Lezna',    slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'basT',  name:'Bastos de Sogas Trenzadas',        short:'Bastos Soga Tren', slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'basL',  name:'Bastos de Soga Lezna/Barquero',   short:'Bastos Lezna',     slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'picazo',name:'Juegos Picazos',                   short:'J. Picazos',       slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'apReg', name:'Aperos Regionales',                short:'Aperos Reg.',      slots:30,type:'apero2j', minPts:55,maxClasif:3,directFinal:true},
+  {id:'lomCh', name:'Lomillos Chapeados',               short:'Lom. Chapeados',   slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'basCh', name:'Bastos Chapeados',                 short:'Bas. Chapeados',   slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'basPL', name:'Bastos Pasadores Largos',          short:'Bas. Pas. Largos', slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'basCM', name:'Bastos Pas. Cortos Mataderos',     short:'Bas. C. Mataderos',slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'basCLl',name:'Bastos Pas. Cortos Llanura B',     short:'Bas. C. Llanura',  slots:30,type:'apero2j', minPts:55,maxClasif:3},
+  {id:'amPl',  name:'Amazonas Plata',                   short:'Amazonas Plata',   slots:30,type:'amazonas',minPts:55,maxClasif:3},
+  {id:'amSog', name:'Amazonas Sogas',                   short:'Amazonas Sogas',   slots:30,type:'amazonas',minPts:55,maxClasif:3},
+  {id:'amSuel',name:'Amazonas Suela',                   short:'Amazonas Suela',   slots:30,type:'amazonas',minPts:55,maxClasif:3},
+  {id:'petiso',name:'Petisos de Trabajo',               short:'Petisos',          slots:30,type:'petiso',  minPts:48,maxClasif:4},
+  {id:'conjR', name:'Conjuntos Regionales',             short:'Conj. Regionales', slots:30,type:'conjunto',minPts:0, maxClasif:99,directFinal:true},
+  {id:'conjT', name:'Conjuntos Tradicionalistas',       short:'Conj. Trad.',      slots:30,type:'conjunto',minPts:55,maxClasif:3},
+];
+const CRITERIA={
+  caballo_b:{maxPts:110,cols:[
+    {key:'tranquera',label:'Paso de Tranquera',max:4},
+    {key:'desmMontar',label:'Desmontar y Montar',max:10},
+    {key:'andares',label:'Andares',max:10},
+    {key:'sujetada',label:'Sujetada',max:10},
+    {key:'ocho',label:'El Ocho',max:10},
+    {key:'cuartoV',label:'1/4 Vuelta',max:10},
+    {key:'retroceso',label:'Retroceso',max:6},
+    {key:'lazo',label:'Lazo',max:10},
+    {key:'vestimenta',label:'Vestimenta',max:10},
+    {key:'apero',label:'Apero',max:10},
+    {key:'arreglos',label:'Arreglos',max:5},
+    {key:'estado',label:'Estado Caballo',max:15},
+  ]},
+  caballo_a:{maxPts:120,cols:[
+    {key:'tranquera',label:'Paso de Tranquera',max:4},
+    {key:'desmMontar',label:'Desmontar y Montar',max:10},
+    {key:'andares',label:'Andares',max:10},
+    {key:'sujetada',label:'Sujetada',max:10},
+    {key:'ocho',label:'El Ocho',max:10},
+    {key:'vueltaE',label:'Vuelta Entera',max:10},
+    {key:'cuartoV',label:'1/4 Vuelta',max:10},
+    {key:'retroceso',label:'Retroceso',max:6},
+    {key:'lazo',label:'Lazo',max:10},
+    {key:'vestimenta',label:'Vestimenta',max:10},
+    {key:'apero',label:'Apero',max:10},
+    {key:'arreglos',label:'Arreglos',max:5},
+    {key:'estado',label:'Estado Caballo',max:15},
+  ]},
+  apero2j:{maxPts:100,
+    caballos:[
+      {key:'morfologia',label:'Morfología',max:10},
+      {key:'tranco',label:'Tranco',max:6},
+      {key:'trote',label:'Trote',max:6},
+      {key:'galDer',label:'Galope Der.',max:4},
+      {key:'galIzq',label:'Galope Izq.',max:4},
+    ],
+    aperos:[
+      {key:'arreglos',label:'Arreglos',max:4},
+      {key:'juegoCab',label:'Juegos de Cabeza',max:18},
+      {key:'recado',label:'Recado y Telería',max:23},
+      {key:'vestimenta',label:'Vestimenta',max:15},
+      {key:'rastra',label:'Rastra y Espuelas',max:10},
+    ]
+  },
+  amazonas:{maxPts:100,
+    caballos:[
+      {key:'morfologia',label:'Morfología',max:10},
+      {key:'tranco',label:'Tranco',max:6},
+      {key:'trote',label:'Trote',max:6},
+      {key:'galDer',label:'Galope Der.',max:4},
+      {key:'galIzq',label:'Galope Izq.',max:4},
+    ],
+    aperos:[
+      {key:'arreglos',label:'Arreglos',max:5},
+      {key:'juegoCab',label:'Juegos de Cabeza',max:20},
+      {key:'silla',label:'Silla y Telería',max:20},
+      {key:'vestimenta',label:'Vestimenta',max:25},
+    ]
+  },
+  petiso:{maxPts:70,cols:[
+    {key:'andares',label:'Andares',max:10},
+    {key:'desmMontar',label:'Desmontar/Montar',max:10},
+    {key:'ocho',label:'El Ocho',max:10},
+    {key:'retroceso',label:'Retroceso',max:5},
+    {key:'vestimenta',label:'Vestimenta',max:10},
+    {key:'apero',label:'Apero',max:10},
+    {key:'estado',label:'Estado Caballo',max:15},
+  ]},
+  conjunto:{maxPts:100,cols:[
+    {key:'caballada',label:'Caballada',max:20},
+    {key:'entrada',label:'Entrada a Pista',max:25},
+    {key:'entablada',label:'Entablada',max:25},
+    {key:'recados',label:'Recados',max:30},
+  ]},
+};
+
+// ══════════════════════════════════════════
+// LOCAL STATE (cache)
+// ══════════════════════════════════════════
+let state={inscripcion:{},puntajes:{},eventNames:{},catSlots:{}};
+try{const s=localStorage.getItem('aperos2026v3');if(s)state=JSON.parse(s);}catch(e){}
+EVENTS.forEach(ev=>{
+  if(!state.inscripcion[ev.id])state.inscripcion[ev.id]={};
+  if(!state.puntajes[ev.id])state.puntajes[ev.id]={};
+  CATEGORIES.forEach(cat=>{
+    if(!state.inscripcion[ev.id][cat.id])state.inscripcion[ev.id][cat.id]=[];
+    if(!state.puntajes[ev.id][cat.id])state.puntajes[ev.id][cat.id]=[];
+  });
+});
+
+let curEvent='e1',curCat='catB',curMode='inscripcion';
+let editIdx=null;
+let isOnline=navigator.onLine;
+
+function persist(){
+  try{localStorage.setItem('aperos2026v3',JSON.stringify(state));}catch(e){}
+}
+
+// ══════════════════════════════════════════
+// SUPABASE SYNC
+// ══════════════════════════════════════════
+async function initDB(){
+  // Create tables if they don't exist via SQL
+  await db.rpc('create_tables_if_not_exists').catch(()=>{}); 
+  syncFromDB();
+}
+
+async function syncFromDB(){
+  if(!isOnline) return;
+  setSyncStatus('syncing','Sincronizando...');
+  try{
+    const {data:insc}=await db.from('inscriptos').select('*');
+    const {data:punts}=await db.from('puntajes').select('*');
+    const {data:cfg}=await db.from('config').select('*');
+
+    if(insc) insc.forEach(r=>{
+      if(!state.inscripcion[r.evento])state.inscripcion[r.evento]={};
+      if(!state.inscripcion[r.evento][r.categoria])state.inscripcion[r.evento][r.categoria]=[];
+      state.inscripcion[r.evento][r.categoria][r.slot]={apellido:r.apellido,nombre:r.nombre,ejemplar:r.ejemplar,tel:r.tel,mail:r.mail,db_id:r.id};
+    });
+    if(punts) punts.forEach(r=>{
+      if(!state.puntajes[r.evento])state.puntajes[r.evento]={};
+      if(!state.puntajes[r.evento][r.categoria])state.puntajes[r.evento][r.categoria]=[];
+      state.puntajes[r.evento][r.categoria][r.slot]=r.scores;
+    });
+    if(cfg) cfg.forEach(r=>{
+      if(r.key==='eventNames') state.eventNames=r.value;
+      if(r.key==='catSlots') state.catSlots=r.value;
+    });
+    persist();
+    setSyncStatus('online','Sincronizado · '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+    renderAll();
+  }catch(e){
+    setSyncStatus('offline','Sin conexión · datos locales');
+  }
+}
+
+async function pushToDB(table, data, match){
+  if(!isOnline) return;
+  try{ await db.from(table).upsert(data,{onConflict:match}); }catch(e){}
+}
+
+async function saveInscriptoDB(evento,categoria,slot,data){
+  await pushToDB('inscriptos',{evento,categoria,slot,...data},{onConflict:'evento,categoria,slot'});
+}
+async function savePuntajeToDB(evento,categoria,slot,scores){
+  await pushToDB('puntajes',{evento,categoria,slot,scores},{onConflict:'evento,categoria,slot'});
+}
+async function saveConfigToDB(key,value){
+  await pushToDB('config',{key,value},{onConflict:'key'});
+}
+
+function setSyncStatus(status,msg){
+  const dot=document.getElementById('sync-dot');
+  const label=document.getElementById('sync-label');
+  if(!dot)return;
+  dot.className='sync-dot '+status;
+  label.textContent=msg;
+}
+
+window.addEventListener('online',()=>{isOnline=true;setSyncStatus('syncing','Reconectado, sincronizando...');syncFromDB();});
+window.addEventListener('offline',()=>{isOnline=false;setSyncStatus('offline','Sin conexión · trabajando offline');});
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function getInsc(eid,cid){return state.inscripcion[eid]&&state.inscripcion[eid][cid]?state.inscripcion[eid][cid]:[];}
+function getScores(eid,cid){return state.puntajes[eid]&&state.puntajes[eid][cid]?state.puntajes[eid][cid]:[];}
+function filledInsc(eid,cid){return getInsc(eid,cid).filter(r=>r&&r.apellido);}
+function getCriteria(t){return CRITERIA[t];}
+function getCatSlots(cid){const cat=CATEGORIES.find(c=>c.id===cid);return(state.catSlots&&state.catSlots[cid])||cat.slots;}
+function getEvName(ev){return(state.eventNames&&state.eventNames[ev.id])||ev.name;}
+function canEdit(){return ROLES[curRole]?.canEdit;}
+function canScore(){return ROLES[curRole]?.canScore;}
+function isReadOnly(){return !canEdit()&&!canScore();}
+
+function calcTotal(catType,scoreObj){
+  if(!scoreObj)return 0;
+  // Soporte para puntajes importados (total directo sin criterios individuales)
+  if(scoreObj._total!==undefined)return parseFloat(scoreObj._total)||0;
+  const c=getCriteria(catType);
+  if(catType==='apero2j'||catType==='amazonas'){
+    let t=0;
+    [...(c.caballos||[]),...(c.aperos||[])].forEach(col=>t+=parseFloat(scoreObj[col.key]||0));
+    return t;
+  }
+  let t=0;(c.cols||[]).forEach(col=>t+=parseFloat(scoreObj[col.key]||0));return t;
+}
+
+function rankScores(eid,cid){
+  const cat=CATEGORIES.find(c=>c.id===cid);
+  const insc=getInsc(eid,cid);
+  const scores=getScores(eid,cid);
+  const tots=insc.map((_,i)=>scores[i]?calcTotal(cat.type,scores[i]):0);
+  return tots.map(t=>{if(!t)return 0;return tots.filter(x=>x>t).length+1;});
+}
+function hasScores(eid,cid){return getScores(eid,cid).some(s=>s&&Object.values(s).some(v=>parseFloat(v||0)>0));}
+
+function getClasificadosPorEtapa(catId,etapaId){
+  const cat=CATEGORIES.find(c=>c.id===catId);
+  const insc=getInsc(etapaId,catId);
+  const scores=getScores(etapaId,catId);
+  const ranks=rankScores(etapaId,catId);
+  if(cat.directFinal)return insc.map((p,i)=>({...p,total:calcTotal(cat.type,scores[i]||{}),rank:ranks[i],etapa:etapaId})).filter(p=>p&&p.apellido);
+  return insc.map((p,i)=>({...p,total:calcTotal(cat.type,scores[i]||{}),rank:ranks[i],etapa:etapaId}))
+    .filter(p=>p&&p.apellido&&p.total>=cat.minPts&&p.rank>0).sort((a,b)=>a.rank-b.rank).slice(0,cat.maxClasif);
+}
+
+function getAllClasificadosParaPalermo(catId){
+  const seen=new Map();
+  ['e1','e2','e3','e4'].forEach(eid=>{
+    getClasificadosPorEtapa(catId,eid).forEach(p=>{
+      const key=(p.apellido+'|'+(p.nombre||'')).toLowerCase();
+      if(!seen.has(key))seen.set(key,{...p,etapas:[eid],clasificoEn:[eid]});
+      else seen.get(key).etapas.push(eid);
+    });
+  });
+  return [...seen.values()];
+}
+
+function getParticipacionPorEtapa(catId){
+  const allP=new Map();
+  ['e1','e2','e3','e4'].forEach(eid=>{
+    getInsc(eid,catId).forEach(r=>{
+      if(r&&r.apellido){
+        const key=(r.apellido+'|'+(r.nombre||'')).toLowerCase();
+        if(!allP.has(key))allP.set(key,{...r,etapas:[]});
+        if(!allP.get(key).etapas.includes(eid))allP.get(key).etapas.push(eid);
+      }
+    });
+  });
+  return allP;
+}
+
+// ══════════════════════════════════════════
+// RENDER SHELL
+// ══════════════════════════════════════════
+function renderAll(){renderEventTabs();renderSidebar();renderMain();}
+
+function renderEventTabs(){
+  const el=document.getElementById('event-tabs');
+  el.innerHTML=EVENTS.map(ev=>{
+    const name=getEvName(ev);
+    if(ev.palermo)return`<button class="etab palermo ${ev.id===curEvent?'active':''}" onclick="selectEvent('${ev.id}')">${name}</button>`;
+    const editable=canEdit();
+    return`<button class="etab ${ev.id===curEvent?'active':''}" onclick="selectEvent('${ev.id}')" ${editable?`ondblclick="startEditEventName(event,'${ev.id}')" title="Doble clic para editar"`:''}>${name}${editable?'<span class="edit-hint">✎</span>':''}</button>`;
+  }).join('');
+}
+
+function startEditEventName(e,evId){
+  e.stopPropagation();
+  const btn=e.currentTarget;
+  const cur=getEvName(EVENTS.find(ev=>ev.id===evId));
+  btn.innerHTML=`<input class="etab-name-input" id="etab-input-${evId}" value="${cur}" maxlength="30" onclick="event.stopPropagation()" onkeydown="handleEventNameKey(event,'${evId}')" onblur="saveEventName('${evId}')">`;
+  const inp=document.getElementById(`etab-input-${evId}`);
+  inp.focus();inp.select();
+}
+function handleEventNameKey(e,evId){e.stopPropagation();if(e.key==='Enter')saveEventName(evId);if(e.key==='Escape')renderEventTabs();}
+function saveEventName(evId){
+  const inp=document.getElementById(`etab-input-${evId}`);if(!inp)return;
+  const val=inp.value.trim();
+  if(val){if(!state.eventNames)state.eventNames={};state.eventNames[evId]=val;persist();saveConfigToDB('eventNames',state.eventNames);}
+  renderEventTabs();
+}
+function getEvName(ev){return(state.eventNames&&state.eventNames[ev.id])||ev.name;}
+
+function renderSidebar(){
+  const el=document.getElementById('sidebar-content');
+  document.getElementById('tab-insc').className='modetab'+(curMode==='inscripcion'?' active':'');
+  document.getElementById('tab-punt').className='modetab'+(curMode==='puntajes'?' active':'');
+
+  // Hide puntajes tab for admin/lectura in palermo if not scoring
+  let html='<div class="sidebar-section">Categorías</div>';
+  CATEGORIES.forEach(cat=>{
+    const count=filledInsc(curEvent,cat.id).length;
+    const slots=getCatSlots(cat.id);
+    const hasSc=hasScores(curEvent,cat.id);
+    const active=cat.id===curCat;
+    html+=`<button class="catbtn ${active?'active':''} ${hasSc?'has-scores':''}" onclick="selectCat('${cat.id}')">
+      <span style="line-height:1.3;font-size:.72rem">${cat.short}</span>
+      <span class="badge">${count}/${slots}</span>
+    </button>`;
+  });
+  el.innerHTML=html;
+}
+
+function renderMain(){
+  const ev=EVENTS.find(e=>e.id===curEvent);
+  if(ev.palermo&&curMode==='puntajes'){renderPalermoView();return;}
+  if(ev.palermo&&curMode==='inscripcion'){renderPalermoInscripcion();return;}
+  if(curMode==='inscripcion')renderInscripcion();
+  else renderPuntajes();
+}
+
+// ══════════════════════════════════════════
+// INSCRIPCIÓN VIEW
+// ══════════════════════════════════════════
+function renderInscripcion(){
+  const ev=EVENTS.find(e=>e.id===curEvent);
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const rows=getInsc(curEvent,curCat);
+  const filled=rows.filter(r=>r&&r.apellido);
+  const slots=getCatSlots(cat.id);
+  const ma=document.getElementById('main-area');
+  const ro=!canEdit();
+
+  let html='';
+  if(ro) html+=`<div class="readonly-notice">👁 Modo solo lectura — no podés modificar inscriptos</div>`;
+
+  html+=`<div class="page-header">
+    <div><h2>${cat.name}</h2>
+    <p>${getEvName(ev)} · ${filled.length} inscripto${filled.length!==1?'s':''} de ${slots} lugares</p></div>
+    <div class="page-header-actions">
+      ${!ro?`<button class="btn btn-gold btn-sm" onclick="openInscModal(null)">+ Agregar</button>`:''}
+    </div>
+  </div>`;
+
+  if(canEdit()){
+    html+=`<div class="slots-bar">
+      <label>Cupos</label>
+      <input type="number" class="slots-input" min="1" max="200" value="${slots}" onchange="updateCatSlots(this.value)">
+      <p>Cupos disponibles en esta categoría</p>
+    </div>`;
+  }
+
+  html+=`<div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Apellido y Nombre</th><th>Ejemplar</th><th>Teléfono</th><th>Mail</th>${!ro?'<th>Acciones</th>':''}</tr></thead>
+    <tbody>`;
+
+  for(let i=0;i<slots;i++){
+    const r=rows[i];
+    if(r&&r.apellido){
+      html+=`<tr><td class="num-cell">${i+1}</td>
+        <td class="name-cell left"><strong>${r.apellido}</strong>${r.nombre?' '+r.nombre:''}</td>
+        <td class="left">${r.ejemplar||'—'}</td>
+        <td>${r.tel||'—'}</td>
+        <td>${r.mail||'—'}</td>
+        ${!ro?`<td style="white-space:nowrap">
+          <button class="btn btn-ghost btn-xs" onclick="openInscModal(${i})">✏</button>
+          <button class="btn btn-danger btn-xs" style="margin-left:3px" onclick="deleteInsc(${i})">✕</button>
+        </td>`:''}
+      </tr>`;
+    } else {
+      html+=`<tr class="empty-row">
+        <td class="num-cell" style="color:#ddd">${i+1}</td>
+        <td colspan="${ro?4:3}" style="color:#ddd;font-style:italic">— lugar disponible —</td>
+        ${!ro?`<td><button class="btn btn-ghost btn-xs" onclick="openInscModal(${i})">+</button></td>`:''}
+      </tr>`;
+    }
+  }
+  html+=`</tbody></table></div>`;
+  ma.innerHTML=html;
+}
+
+function updateCatSlots(v){
+  const n=parseInt(v);if(!n||n<1||n>200)return;
+  if(!state.catSlots)state.catSlots={};
+  state.catSlots[curCat]=n;persist();
+  saveConfigToDB('catSlots',state.catSlots);
+  renderMain();
+}
+
+// ══════════════════════════════════════════
+// PUNTAJES VIEW
+// ══════════════════════════════════════════
+function renderPuntajes(){
+  const ev=EVENTS.find(e=>e.id===curEvent);
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const insc=getInsc(curEvent,curCat);
+  const scores=getScores(curEvent,curCat);
+  const filled=insc.filter(r=>r&&r.apellido);
+  const ranks=rankScores(curEvent,curCat);
+  const crit=getCriteria(cat.type);
+  const ma=document.getElementById('main-area');
+  const role=ROLES[curRole];
+
+  const canEditCab=role.canScore===true||role.canScore==='caballos';
+  const canEditApe=role.canScore===true||role.canScore==='aperos';
+  const canEditAll=role.canScore===true;
+
+  if(filled.length===0){
+    ma.innerHTML=`<div class="page-header"><div><h2>${cat.name}</h2><p>${getEvName(ev)}</p></div></div>
+    <div style="text-align:center;padding:60px;color:#bbb"><p style="font-size:.85rem">No hay inscriptos. Primero agregalos en Inscripción.</p></div>`;
+    return;
+  }
+
+  // Detectar si hay filas importadas en este evento/categoría
+  const totalFilled=filled.length;
+  const importedCount=filled.filter((_,i)=>{const idx=insc.findIndex((r,j)=>r&&r.apellido&&insc.slice(0,j+1).filter(x=>x&&x.apellido).length-1===i);return scores[idx]&&scores[idx]._total!==undefined;}).length;
+  // Simplificado: contar cuántas filas tienen _total
+  let importedRows=0;
+  insc.forEach((_,i)=>{if(scores[i]&&scores[i]._total!==undefined)importedRows++;});
+  const allImported=importedRows>0&&importedRows===insc.filter(r=>r&&r.apellido).length;
+
+  let html='';
+  if(!role.canScore) html+=`<div class="readonly-notice">👁 Solo podés ver los puntajes, no editarlos</div>`;
+  if(importedRows>0) html+=`<div class="readonly-notice" style="background:#e3f2fd;border-color:#1565C0;color:#1565C0">
+    📥 <strong>${importedRows} resultado${importedRows!==1?'s':''} importado${importedRows!==1?'s':''}</strong> de clasificatoria — puntaje total registrado
+  </div>`;
+
+  html+=`<div class="page-header">
+    <div><h2>${cat.name}</h2>
+    <p>${getEvName(ev)} · ${totalFilled} participantes · Máx. ${crit.maxPts} pts${allImported?' · <span style="color:#1565C0;font-weight:700">📥 Clasificatoria importada</span>':''}</p></div>
+    <div class="page-header-actions">
+      ${role.canScore&&!allImported?`<button class="btn btn-navy btn-sm" onclick="saveScores()">💾 Guardar</button>`:''}
+    </div>
+  </div>`;
+
+  // ── Si es todo importado: tabla de resultados limpia ──
+  if(allImported){
+    html+=`<div class="table-wrap"><table id="score-table">
+      <thead><tr>
+        <th>#</th><th style="text-align:left">Participante</th><th>Ejemplar</th>
+        <th>Puntaje</th><th>/ Máx.</th><th>%</th><th>Rank</th><th>Clasifica</th>
+      </tr></thead><tbody>`;
+    const sorted=[...insc.map((p,i)=>({p,i})).filter(({p})=>p&&p.apellido)]
+      .sort((a,b)=>(calcTotal(cat.type,scores[b.i]||{}))-(calcTotal(cat.type,scores[a.i]||{})));
+    sorted.forEach(({p,i})=>{
+      const s=scores[i]||{};
+      const tot=calcTotal(cat.type,s);
+      const rank=ranks[i];
+      const rankClass=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
+      const pct=crit.maxPts>0?Math.round(tot/crit.maxPts*100):0;
+      const clasifica=cat.directFinal||(tot>=cat.minPts&&rank>0&&rank<=cat.maxClasif);
+      html+=`<tr data-row="${i}" class="imported-row">
+        <td class="num-cell">${i+1}</td>
+        <td class="name-cell left"><strong>${p.apellido}</strong>${p.nombre?' '+p.nombre:''}</td>
+        <td style="font-size:.72rem;color:#888">${p.ejemplar||'—'}</td>
+        <td class="total-importado">${tot>0?tot.toFixed(1):'—'}</td>
+        <td style="font-size:.68rem;color:#aaa">${crit.maxPts}</td>
+        <td style="font-size:.72rem;font-weight:700;color:${pct>=70?'var(--green)':pct>=50?'var(--navy)':'#999'}">${tot>0?pct+'%':'—'}</td>
+        <td class="rank-cell ${rankClass}">${rank>0?'#'+rank:'—'}</td>
+        <td style="text-align:center">${clasifica?'<span style="color:var(--green);font-weight:700;font-size:.75rem">✓ Clasifica</span>':'<span style="color:#ddd;font-size:.72rem">—</span>'}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>`;
+    ma.innerHTML=html;
+    return;
+  }
+
+  // ── Vista mixta o solo puntaje manual ──
+  html+=`<div class="table-wrap"><table id="score-table"><thead>`;
+  if(cat.type==='apero2j'||cat.type==='amazonas'){
+    const cabCols=crit.caballos;const apCols=crit.aperos;
+    html+=`<tr>
+      <th>#</th><th>Participante</th>
+      <th colspan="${cabCols.length}" class="jury-header">JURADO CABALLOS</th><th>Sub Cab.</th>
+      <th colspan="${apCols.length}" class="jury-header">JURADO APEROS</th><th>Sub Ape.</th>
+      <th>TOTAL</th><th>Rank</th><th>Obs.</th>
+    </tr><tr>
+      <th></th><th></th>
+      ${cabCols.map(c=>`<th style="font-size:.6rem">${c.label}<br><span style="color:var(--navy)">≤${c.max}</span></th>`).join('')}
+      <th></th>
+      ${apCols.map(c=>`<th style="font-size:.6rem">${c.label}<br><span style="color:var(--navy)">≤${c.max}</span></th>`).join('')}
+      <th></th><th></th><th></th><th></th>
+    </tr>`;
+  } else {
+    html+=`<tr><th>#</th><th>Participante</th>
+      ${crit.cols.map(c=>`<th style="font-size:.6rem">${c.label}<br><span style="color:var(--navy)">≤${c.max}</span></th>`).join('')}
+      <th>TOTAL</th><th>Rank</th><th>Obs.</th>
+    </tr>`;
+  }
+  html+=`</thead><tbody>`;
+
+  insc.forEach((p,i)=>{
+    if(!p||!p.apellido)return;
+    const s=scores[i]||{};
+    const tot=calcTotal(cat.type,s);
+    const rank=ranks[i];
+    const rankClass=rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'';
+    const isImp=s._total!==undefined;
+
+    if(isImp){
+      // Fila importada dentro de tabla mixta
+      const colSpan=cat.type==='apero2j'||cat.type==='amazonas'
+        ?crit.caballos.length+1+crit.aperos.length+1
+        :crit.cols.length;
+      html+=`<tr data-row="${i}" class="imported-row">
+        <td class="num-cell">${i+1}</td>
+        <td class="name-cell left"><strong>${p.apellido}</strong>${p.nombre?' '+p.nombre:''}<br><span class="imported-info">${p.ejemplar||''}</span></td>
+        <td colspan="${colSpan}" style="text-align:center"><span class="imported-badge">📥 Importado</span></td>
+        <td class="total-importado">${tot>0?tot.toFixed(1):'—'}</td>
+        <td class="rank-cell ${rankClass}">${rank>0?'#'+rank:'—'}</td>
+        <td></td>
+      </tr>`;
+    } else if(cat.type==='apero2j'||cat.type==='amazonas'){
+      const cabCols=crit.caballos;const apCols=crit.aperos;
+      let subCab=0,subApe=0;
+      cabCols.forEach(c=>subCab+=parseFloat(s[c.key]||0));
+      apCols.forEach(c=>subApe+=parseFloat(s[c.key]||0));
+      html+=`<tr data-row="${i}">
+        <td class="num-cell">${i+1}</td>
+        <td class="name-cell left"><strong>${p.apellido}</strong>${p.nombre?' '+p.nombre:''}</td>
+        ${cabCols.map(c=>`<td><input type="number" min="0" max="${c.max}" step="0.5" class="score-input" data-idx="${i}" data-key="${c.key}" data-max="${c.max}" value="${s[c.key]!==undefined?s[c.key]:''}" ${!canEditCab?'disabled':''} oninput="onScoreInput(this)"></td>`).join('')}
+        <td class="subtotal-cell">${subCab.toFixed(1)}</td>
+        ${apCols.map(c=>`<td><input type="number" min="0" max="${c.max}" step="0.5" class="score-input" data-idx="${i}" data-key="${c.key}" data-max="${c.max}" value="${s[c.key]!==undefined?s[c.key]:''}" ${!canEditApe?'disabled':''} oninput="onScoreInput(this)"></td>`).join('')}
+        <td class="subtotal-cell">${subApe.toFixed(1)}</td>
+        <td class="total-cell">${tot>0?tot.toFixed(1):'—'}</td>
+        <td class="rank-cell ${rankClass}">${rank>0?'#'+rank:'—'}</td>
+        <td><input type="text" class="obs-input" data-idx="${i}" data-key="obs" value="${s.obs||''}" ${!role.canScore?'disabled':''} onchange="onObsInput(this)" placeholder="Obs."></td>
+      </tr>`;
+    } else {
+      html+=`<tr data-row="${i}">
+        <td class="num-cell">${i+1}</td>
+        <td class="name-cell left"><strong>${p.apellido}</strong>${p.nombre?' '+p.nombre:''}</td>
+        ${crit.cols.map(c=>`<td><input type="number" min="0" max="${c.max}" step="0.5" class="score-input" data-idx="${i}" data-key="${c.key}" data-max="${c.max}" value="${s[c.key]!==undefined?s[c.key]:''}" ${!canEditAll?'disabled':''} oninput="onScoreInput(this)"></td>`).join('')}
+        <td class="total-cell">${tot>0?tot.toFixed(1):'—'}</td>
+        <td class="rank-cell ${rankClass}">${rank>0?'#'+rank:'—'}</td>
+        <td><input type="text" class="obs-input" data-idx="${i}" data-key="obs" value="${s.obs||''}" ${!canEditAll?'disabled':''} onchange="onObsInput(this)" placeholder="Obs."></td>
+      </tr>`;
+    }
+  });
+  html+=`</tbody></table></div>`;
+  ma.innerHTML=html;
+}
+
+function onScoreInput(el){
+  const idx=parseInt(el.dataset.idx);
+  const key=el.dataset.key;
+  const max=parseFloat(el.dataset.max);
+  const val=parseFloat(el.value)||0;
+  el.classList.toggle('over',val>max);
+  if(!state.puntajes[curEvent][curCat][idx])state.puntajes[curEvent][curCat][idx]={};
+  state.puntajes[curEvent][curCat][idx][key]=el.value===''?undefined:parseFloat(el.value);
+  updateTotalsInDOM();
+}
+function onObsInput(el){
+  const idx=parseInt(el.dataset.idx);
+  if(!state.puntajes[curEvent][curCat][idx])state.puntajes[curEvent][curCat][idx]={};
+  state.puntajes[curEvent][curCat][idx].obs=el.value;
+}
+function updateTotalsInDOM(){
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const insc=getInsc(curEvent,curCat);
+  const scores=state.puntajes[curEvent][curCat];
+  const ranks=rankScores(curEvent,curCat);
+  insc.forEach((p,i)=>{
+    if(!p||!p.apellido)return;
+    const s=scores[i]||{};
+    const tot=calcTotal(cat.type,s);
+    const rank=ranks[i];
+    const row=document.querySelector(`tr[data-row="${i}"]`);if(!row)return;
+    const tc=row.querySelector('.total-cell');const rc=row.querySelector('.rank-cell');
+    if(tc)tc.textContent=tot>0?tot.toFixed(1):'—';
+    if(rc){rc.textContent=rank>0?'#'+rank:'—';rc.className='rank-cell '+(rank===1?'rank-1':rank===2?'rank-2':rank===3?'rank-3':'');}
+    if(cat.type==='apero2j'||cat.type==='amazonas'){
+      const crit=getCriteria(cat.type);
+      let sc=0,sa=0;
+      crit.caballos.forEach(c=>sc+=parseFloat(s[c.key]||0));
+      crit.aperos.forEach(c=>sa+=parseFloat(s[c.key]||0));
+      const subs=row.querySelectorAll('.subtotal-cell');
+      if(subs[0])subs[0].textContent=sc.toFixed(1);
+      if(subs[1])subs[1].textContent=sa.toFixed(1);
+    }
+  });
+}
+
+async function saveScores(){
+  persist();
+  // Push each filled score to DB
+  const scores=state.puntajes[curEvent][curCat];
+  for(let i=0;i<scores.length;i++){
+    if(scores[i]&&Object.keys(scores[i]).length>0){
+      await savePuntajeToDB(curEvent,curCat,i,scores[i]);
+    }
+  }
+  renderSidebar();
+  toast('✓ Puntajes guardados');
+}
+
+// ══════════════════════════════════════════
+// PALERMO VIEWS
+// ══════════════════════════════════════════
+function renderPalermoInscripcion(){
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const crit=getCriteria(cat.type);
+  const clasificados=getAllClasificadosParaPalermo(cat.id);
+  const participacion=getParticipacionPorEtapa(cat.id);
+  const inscPalermo=getInsc('e5',cat.id);
+  const ro=!canEdit();
+
+  const directLabel=cat.directFinal
+    ?`<span style="font-size:.65rem;background:var(--navy);color:#fff;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:6px;letter-spacing:.06em">ACCESO DIRECTO</span>`
+    :`<span style="font-size:.65rem;color:#888;margin-left:6px">mín.${cat.minPts}pts · top${cat.maxClasif}/etapa</span>`;
+
+  let html=`<div class="page-header">
+    <div><h2>${cat.name} — Final Palermo ${directLabel}</h2>
+    <p>${clasificados.length} clasificado${clasificados.length!==1?'s':''} · ${inscPalermo.filter(r=>r&&r.apellido).length} inscriptos en Palermo</p></div>
+    <div class="page-header-actions">
+      ${!ro?`<button class="btn btn-gold btn-sm" onclick="inscribeAllClasificados()">↓ Inscribir clasificados</button>`:''}
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+  <div>
+    <h3 style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--navy);margin-bottom:10px">Clasificados</h3>
+    <div class="table-wrap"><table><thead><tr><th>✓</th><th>Participante</th><th>Participó</th><th>Clasificó</th></tr></thead><tbody>`;
+
+  if([...participacion.values()].length===0){
+    html+=`<tr><td colspan="4" style="text-align:center;padding:20px;color:#bbb">Sin datos en etapas 1-4</td></tr>`;
+  }
+  [...participacion.values()].sort((a,b)=>a.apellido.localeCompare(b.apellido)).forEach(p=>{
+    const key=(p.apellido+'|'+(p.nombre||'')).toLowerCase();
+    const clasifData=clasificados.find(c=>(c.apellido+'|'+(c.nombre||'')).toLowerCase()===key);
+    const califica=!!clasifData;
+    html+=`<tr style="${califica?'':'opacity:.4'}">
+      <td>${califica?'✓':'—'}</td>
+      <td class="name-cell left"><strong>${p.apellido}</strong> ${p.nombre||''}</td>
+      <td><div style="display:flex;gap:2px;justify-content:center">
+        ${['e1','e2','e3','e4'].map((eid,ei)=>`<span class="etapa-dot ${p.etapas.includes(eid)?'participó':'no'}">${ei+1}</span>`).join('')}
+      </div></td>
+      <td style="text-align:center">
+        ${califica&&clasifData.clasificoEn?clasifData.clasificoEn.map(eid=>{const ei=['e1','e2','e3','e4'].indexOf(eid);return`<span class="etapa-dot participó">${ei+1}</span>`;}).join(''):'—'}
+      </td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>
+  <div style="margin-top:10px;padding:8px 12px;background:#eef2f8;border-radius:6px;font-size:.7rem;color:var(--navy);border-left:3px solid var(--navy)">
+    ${cat.directFinal?'📋 Acceso directo a la final.':
+    `📋 Clasifican: top ${cat.maxClasif} con mín. ${cat.minPts} pts (de ${crit.maxPts}).`}
+  </div></div>
+  <div>
+    <h3 style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--navy);margin-bottom:10px">Inscriptos Palermo</h3>
+    <div class="table-wrap"><table><thead><tr><th>#</th><th>Participante</th>${!ro?'<th></th>':''}</tr></thead><tbody>`;
+
+  for(let i=0;i<cat.slots;i++){
+    const r=inscPalermo[i];
+    if(r&&r.apellido){
+      html+=`<tr><td class="num-cell">${i+1}</td><td class="name-cell left"><strong>${r.apellido}</strong> ${r.nombre||''}</td>${!ro?`<td><button class="btn btn-danger btn-xs" onclick="deleteInsc(${i})">✕</button></td>`:''}</tr>`;
+    } else {
+      html+=`<tr class="empty-row"><td class="num-cell" style="color:#ddd">${i+1}</td><td colspan="${ro?1:2}" style="color:#ddd">disponible</td></tr>`;
+    }
+  }
+  html+=`</tbody></table></div></div></div>`;
+  document.getElementById('main-area').innerHTML=html;
+}
+
+function inscribeAllClasificados(){
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const clasificados=getAllClasificadosParaPalermo(cat.id);
+  state.inscripcion['e5'][cat.id]=clasificados.slice(0,cat.slots).map(p=>({apellido:p.apellido,nombre:p.nombre,ejemplar:p.ejemplar,tel:p.tel,mail:p.mail}));
+  persist();renderAll();toast('✓ Clasificados inscriptos en Palermo');
+}
+
+function renderPalermoView(){
+  let html=`<div class="page-header"><div><h2>Final Palermo — Clasificados</h2>
+    <p>Reglamento SRA · mín. 55 pts aperos · 60 pts Cat B · 70 pts Cat A · 48 pts Petisos</p></div></div>
+  <div class="palermo-grid">`;
+  CATEGORIES.forEach(cat=>{
+    const clasificados=getAllClasificadosParaPalermo(cat.id);
+    html+=`<div class="palermo-card ${clasificados.length?'has-data':''}">
+      <div class="palermo-card-header">
+        <h3>${cat.name}</h3>
+        <p>${clasificados.length} clasificado${clasificados.length!==1?'s':''} · ${cat.directFinal?'Acceso directo':`mín.${cat.minPts}pts`}</p>
+      </div>`;
+    if(!clasificados.length){html+=`<div class="palermo-empty">Sin clasificados aún</div>`;}
+    else clasificados.sort((a,b)=>a.apellido.localeCompare(b.apellido)).forEach((p,i)=>{
+      html+=`<div class="palermo-row">
+        <span class="palermo-num">${i+1}</span>
+        <span class="palermo-name">${p.apellido}${p.nombre?' '+p.nombre:''}</span>
+        <div class="palermo-etapas">
+          ${(p.clasificoEn||[]).map(eid=>{const ei=['e1','e2','e3','e4'].indexOf(eid);return`<span class="etapa-dot participó" style="font-size:.48rem;width:22px;border-radius:3px">${getEvName(EVENTS.find(e=>e.id===eid)).substring(0,5)}</span>`;}).join('')}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+  document.getElementById('main-area').innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// INSCRIPCIÓN MODAL
+// ══════════════════════════════════════════
+function openInscModal(idx){
+  editIdx=idx;
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const ev=EVENTS.find(e=>e.id===curEvent);
+  const rows=getInsc(curEvent,curCat);
+  const r=idx!==null?rows[idx]||{}:{};
+  document.getElementById('minsc-title').textContent=(r.apellido?'Editar':'Agregar')+' Inscripto';
+  document.getElementById('minsc-sub').textContent=`${cat.name} · ${getEvName(ev)}${idx!==null?' · Lugar #'+(idx+1):''}`;
+  ['apellido','nombre','ejemplar','tel','mail'].forEach(f=>{document.getElementById('f-'+f).value=r[f]||'';});
+  document.getElementById('modal-insc').classList.remove('hidden');
+  document.getElementById('f-apellido').focus();
+}
+
+async function saveInscripto(){
+  const apellido=document.getElementById('f-apellido').value.trim();
+  if(!apellido){toast('⚠ Ingresá el apellido');return;}
+  const obj={apellido,nombre:document.getElementById('f-nombre').value.trim(),
+    ejemplar:document.getElementById('f-ejemplar').value.trim(),
+    tel:document.getElementById('f-tel').value.trim(),
+    mail:document.getElementById('f-mail').value.trim()};
+  const cat=CATEGORIES.find(c=>c.id===curCat);
+  const slots=getCatSlots(cat.id);
+  while(state.inscripcion[curEvent][curCat].length<slots)state.inscripcion[curEvent][curCat].push(null);
+  let slot=editIdx;
+  if(editIdx!==null){
+    state.inscripcion[curEvent][curCat][editIdx]=obj;
+  } else {
+    const free=state.inscripcion[curEvent][curCat].findIndex(r=>!r||!r.apellido);
+    if(free>=0){state.inscripcion[curEvent][curCat][free]=obj;slot=free;}
+    else{toast('⚠ No hay lugares disponibles');return;}
+  }
+  persist();
+  await saveInscriptoDB(curEvent,curCat,slot,obj);
+  closeModal('modal-insc');
+  renderAll();toast('✓ Inscripto guardado');
+}
+
+async function deleteInsc(idx){
+  if(!confirm('¿Eliminar este inscripto?'))return;
+  state.inscripcion[curEvent][curCat][idx]=null;
+  persist();
+  await db.from('inscriptos').delete().match({evento:curEvent,categoria:curCat,slot:idx}).catch(()=>{});
+  renderAll();toast('Inscripto eliminado');
+}
+
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay:not(.hidden)').forEach(o=>o.classList.add('hidden'));});
+
+// ══════════════════════════════════════════
+// EXPORT
+// ══════════════════════════════════════════
+function exportCurrentEvent(){
+  const ev=EVENTS.find(e=>e.id===curEvent);
+  const wb=XLSX.utils.book_new();
+  const inscData=[['N°','Categoría','Apellido y Nombre','Ejemplar','Teléfono','Mail']];
+  CATEGORIES.forEach(cat=>{
+    const rows=getInsc(ev.id,cat.id);
+    for(let i=0;i<getCatSlots(cat.id);i++){
+      const r=rows[i];
+      inscData.push([i+1,cat.name,r&&r.apellido?`${r.apellido} ${r.nombre||''}`:'',r&&r.ejemplar||'',r&&r.tel||'',r&&r.mail||'']);
+    }
+  });
+  const wsI=XLSX.utils.aoa_to_sheet(inscData);
+  XLSX.utils.book_append_sheet(wb,wsI,'Inscripcion');
+  CATEGORIES.forEach(cat=>{
+    const crit=getCriteria(cat.type);
+    const insc=getInsc(ev.id,cat.id);
+    const scores=getScores(ev.id,cat.id);
+    const ranks=rankScores(ev.id,cat.id);
+    let rows=[[cat.name],[]];
+    if(cat.type==='apero2j'||cat.type==='amazonas'){
+      rows.push(['N°','Nombre',...crit.caballos.map(c=>c.label),'Sub Caballos',...crit.aperos.map(c=>c.label),'Sub Aperos','TOTAL','Rank','Obs']);
+      insc.forEach((p,i)=>{if(!p||!p.apellido)return;
+        const s=scores[i]||{};let sc=0,sa=0;
+        crit.caballos.forEach(c=>sc+=parseFloat(s[c.key]||0));
+        crit.aperos.forEach(c=>sa+=parseFloat(s[c.key]||0));
+        rows.push([i+1,`${p.apellido} ${p.nombre||''}`,...crit.caballos.map(c=>s[c.key]||''),sc||'',...crit.aperos.map(c=>s[c.key]||''),sa||'',(sc+sa)||'',ranks[i]||'',s.obs||'']);
+      });
+    } else {
+      rows.push(['N°','Nombre',...crit.cols.map(c=>c.label),'TOTAL','Rank','Obs']);
+      insc.forEach((p,i)=>{if(!p||!p.apellido)return;
+        const s=scores[i]||{};const tot=calcTotal(cat.type,s);
+        rows.push([i+1,`${p.apellido} ${p.nombre||''}`,...crit.cols.map(c=>s[c.key]||''),tot||'',ranks[i]||'',s.obs||'']);
+      });
+    }
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb,ws,cat.short.substring(0,31));
+  });
+  XLSX.writeFile(wb,`Emprendados_SRA_${getEvName(ev).replace(/\s+/g,'_')}.xlsx`);
+  toast(`✓ Excel exportado: ${getEvName(ev)}`);
+}
+
+// ══════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════
+function selectEvent(id){curEvent=id;renderAll();}
+function selectCat(id){curCat=id;renderAll();}
+function setMode(m){curMode=m;renderAll();}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════════════
+// IMPORTAR CLASIFICATORIAS
+// ══════════════════════════════════════════
+let importMode='excel';
+let importParsedData=null;
+
+function openImportModal(){
+  importMode='excel';
+  importParsedData=null;
+  const fi=document.getElementById('import-file');
+  if(fi)fi.value='';
+  document.getElementById('import-preview').innerHTML='';
+  document.getElementById('import-progress').style.display='none';
+  document.getElementById('btn-do-import').disabled=false;
+  switchImportTab('excel');
+  document.getElementById('modal-import').classList.remove('hidden');
+}
+
+function switchImportTab(tab){
+  importMode=tab;
+  document.getElementById('imp-tab-excel').classList.toggle('active',tab==='excel');
+  document.getElementById('imp-tab-sample').classList.toggle('active',tab==='sample');
+  document.getElementById('imp-panel-excel').style.display=tab==='excel'?'':'none';
+  document.getElementById('imp-panel-sample').style.display=tab==='sample'?'':'none';
+}
+
+function previewImport(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rows.length<2){
+        document.getElementById('import-preview').innerHTML='<p style="color:var(--red);font-size:.72rem">El archivo está vacío o no tiene datos.</p>';
+        return;
+      }
+      const headers=rows[0].map(h=>String(h).trim().toLowerCase());
+      const ci={
+        etapa:  headers.findIndex(h=>h.includes('etapa')||h.includes('evento')||h==='e'),
+        cat:    headers.findIndex(h=>h.includes('categor')||h.includes('cat')),
+        apellido:headers.findIndex(h=>h.includes('apellido')),
+        nombre: headers.findIndex(h=>h.includes('nombre')&&!h.includes('ejemplar')&&!h.includes('caballo')),
+        ejemplar:headers.findIndex(h=>h.includes('ejemplar')||h.includes('caballo')),
+        tel:    headers.findIndex(h=>h.includes('tel')||h.includes('cel')||h.includes('fono')),
+        mail:   headers.findIndex(h=>h.includes('mail')||h.includes('email')||h.includes('correo')),
+        puntaje:headers.findIndex(h=>h.includes('puntaje')||h.includes('total')||h.includes('pts')||h.includes('score')),
+      };
+      if(ci.apellido<0){
+        document.getElementById('import-preview').innerHTML='<p style="color:var(--red);font-size:.72rem">⚠ No se encontró columna "Apellido". Revisá el formato.</p>';
+        return;
+      }
+      importParsedData=rows.slice(1).filter(r=>r[ci.apellido]&&String(r[ci.apellido]).trim()).map(r=>({
+        etapa: ci.etapa>=0?String(r[ci.etapa]).trim():'1',
+        categoria:ci.cat>=0?String(r[ci.cat]).trim():'',
+        apellido:String(r[ci.apellido]||'').trim().toUpperCase(),
+        nombre:  ci.nombre>=0?String(r[ci.nombre]||'').trim():'',
+        ejemplar:ci.ejemplar>=0?String(r[ci.ejemplar]||'').trim():'',
+        tel:     ci.tel>=0?String(r[ci.tel]||'').trim():'',
+        mail:    ci.mail>=0?String(r[ci.mail]||'').trim():'',
+        puntaje: ci.puntaje>=0?parseFloat(r[ci.puntaje])||0:0,
+      }));
+      const sinCat=importParsedData.filter(r=>!resolveCatId(r.categoria)).length;
+      const sinPts=importParsedData.filter(r=>r.puntaje===0).length;
+      let html=`<div style="padding:10px;background:#e8f5e9;border-radius:4px;font-size:.72rem;color:#2E7D32">
+        ✓ <strong>${importParsedData.length} filas</strong> leídas.
+        ${sinPts>0?`<span style="color:#795548"> · ${sinPts} sin puntaje.</span>`:''}
+        ${sinCat>0?`<span style="color:var(--red)"> · ⚠ ${sinCat} sin categoría reconocida.</span>`:''}
+      </div>`;
+      if(importParsedData.length>0){
+        html+=`<div style="margin-top:8px;font-size:.7rem;color:#888;padding:6px 10px;background:#f5f5f5;border-radius:4px">
+          Ejemplo fila 1: <strong>${importParsedData[0].apellido}</strong> ${importParsedData[0].nombre}
+          — Cat: ${importParsedData[0].categoria||'(vacío)'}
+          — Etapa: ${importParsedData[0].etapa}
+          — Pts: ${importParsedData[0].puntaje}
+        </div>`;
+      }
+      document.getElementById('import-preview').innerHTML=html;
+    }catch(err){
+      document.getElementById('import-preview').innerHTML=`<p style="color:var(--red);font-size:.72rem">Error al leer el archivo: ${err.message}</p>`;
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function resolveEtapaId(s){
+  const t=String(s).trim().toLowerCase().replace(/\s+/g,'');
+  if(t==='1'||t==='e1'||t.includes('etapa1')||t.includes('evento1'))return 'e1';
+  if(t==='2'||t==='e2'||t.includes('etapa2')||t.includes('evento2'))return 'e2';
+  if(t==='3'||t==='e3'||t.includes('etapa3')||t.includes('evento3'))return 'e3';
+  if(t==='4'||t==='e4'||t.includes('etapa4')||t.includes('evento4'))return 'e4';
+  return 'e1';
+}
+
+function resolveCatId(catStr){
+  if(!catStr)return null;
+  const s=catStr.trim().toLowerCase();
+  // Exact id
+  const byId=CATEGORIES.find(c=>c.id.toLowerCase()===s);
+  if(byId)return byId.id;
+  // Short name
+  const byShort=CATEGORIES.find(c=>c.short.toLowerCase()===s||s===c.short.toLowerCase());
+  if(byShort)return byShort.id;
+  // Partial name (at least 5 chars matching)
+  const byName=CATEGORIES.find(c=>c.name.toLowerCase().includes(s)||s.includes(c.name.toLowerCase().substring(0,6)));
+  if(byName)return byName.id;
+  // fuzzy: category short words
+  const byWord=CATEGORIES.find(c=>c.short.toLowerCase().split(' ').some(w=>w.length>3&&s.includes(w)));
+  return byWord?byWord.id:null;
+}
+
+async function doImport(){
+  const prog=document.getElementById('import-progress');
+  const btnImp=document.getElementById('btn-do-import');
+  prog.style.display='';
+  btnImp.disabled=true;
+
+  if(importMode==='excel'){
+    if(!importParsedData||importParsedData.length===0){
+      toast('⚠ Seleccioná un archivo primero');
+      prog.style.display='none';btnImp.disabled=false;
+      return;
+    }
+    let count=0, skipped=0;
+    for(const row of importParsedData){
+      const eid=resolveEtapaId(row.etapa);
+      const catId=resolveCatId(row.categoria);
+      if(!catId){skipped++;continue;}
+      if(!state.inscripcion[eid])state.inscripcion[eid]={};
+      if(!state.inscripcion[eid][catId])state.inscripcion[eid][catId]=[];
+      if(!state.puntajes[eid])state.puntajes[eid]={};
+      if(!state.puntajes[eid][catId])state.puntajes[eid][catId]=[];
+      const slot=state.inscripcion[eid][catId].length;
+      const obj={apellido:row.apellido,nombre:row.nombre,ejemplar:row.ejemplar,tel:row.tel,mail:row.mail};
+      state.inscripcion[eid][catId].push(obj);
+      state.puntajes[eid][catId].push({_total:row.puntaje});
+      await saveInscriptoDB(eid,catId,slot,obj);
+      await savePuntajeToDB(eid,catId,slot,{_total:row.puntaje});
+      count++;
+    }
+    persist();
+    closeModal('modal-import');
+    renderAll();
+    toast(`✓ ${count} inscriptos importados${skipped>0?' · '+skipped+' omitidos (categoría no reconocida)':''}`);
+  } else {
+    prog.textContent='Cargando datos de prueba...';
+    await loadSampleData();
+    closeModal('modal-import');
+  }
+  prog.style.display='none';btnImp.disabled=false;
+}
+
+function downloadImportTemplate(){
+  const wb=XLSX.utils.book_new();
+  const data=[
+    ['Etapa','Categoría','Apellido','Nombre','Ejemplar','Tel','Mail','Puntaje'],
+    ['1','catB','GARCIA','Juan','Compadre','11-2345-6789','juan@mail.com',85],
+    ['1','catA','RODRIGUEZ','María','Dorada','11-3456-7890','maria@mail.com',92],
+    ['2','lomT','LOPEZ','Carlos','Gaucho','','',72],
+    ['3','petiso','MARTINEZ','Pedro','Pampa','','',58],
+  ];
+  const catRef=[['ID Categoría','Nombre completo','Puntaje mín. clasificar']];
+  CATEGORIES.forEach(c=>catRef.push([c.id,c.name,c.minPts||0]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'Importar');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(catRef),'Categorías');
+  XLSX.writeFile(wb,'Plantilla_Clasificatorias_2025-2026.xlsx');
+  toast('✓ Plantilla descargada');
+}
+
+async function loadSampleData(){
+  const apellidos=['GARCIA','RODRIGUEZ','LOPEZ','MARTINEZ','GONZALEZ','FERNANDEZ','PEREZ','SANCHEZ',
+    'ROMERO','TORRES','DIAZ','GUTIERREZ','MORALES','HERRERA','MOLINA','VARGAS','CASTRO','SUAREZ',
+    'REYES','ORTIZ','CABRAL','PEREYRA','ACOSTA','MENDEZ','SILVA','RIOS','LUNA','MEDINA',
+    'CHAVEZ','ALVAREZ','FLORES','VEGA','RAMOS','AGUIRRE','BECERRA','MIÑO','OLGUIN','SOSA'];
+  const nombres=['Juan','Carlos','Pedro','Miguel','Diego','Roberto','Eduardo','Gustavo','Mario',
+    'Alejandro','Daniel','Pablo','Ricardo','Andrés','Facundo','Nicolás','Sebastián','Matías',
+    'Ezequiel','Lucas','Santiago','Federico','Ramón','Héctor','Alfredo','Osvaldo','Jorge','Adrián'];
+  const caballos=['Compadre','Dorado','Gaucho','Pampa','Criollo','Caudillo','Pampero','Alazán',
+    'Tordillo','Overo','Malacara','Picazo','Sultán','Negro','Mancha','Bayo','Rosillo','Zaino',
+    'Tostado','Gateado','Colorado','Moro','Ruano','Tordo','Malabar','Fortín','Pampeano','Llanero'];
+  let seed=1973;
+  function rand(){seed=Math.imul(seed,1664525)+1013904223|0;return(seed>>>0)/4294967296;}
+  function pick(arr){return arr[Math.floor(rand()*arr.length)];}
+  function pts(min,max){return Math.round((min+rand()*(max-min))*2)/2;}
+
+  if(!state.eventNames)state.eventNames={};
+  state.eventNames.e1='Expo Rural Córdoba (Ago 2025)';
+  state.eventNames.e2='Rural del Litoral (Sep 2025)';
+  state.eventNames.e3='Expo Pampeana (Nov 2025)';
+  state.eventNames.e4='Rural Patagónica (Mar 2026)';
+  await saveConfigToDB('eventNames',state.eventNames);
+
+  const etapas=['e1','e2','e3','e4'];
+  let totalCount=0;
+  for(const eid of etapas){
+    for(const cat of CATEGORIES){
+      const maxPts=(CRITERIA[cat.type]&&CRITERIA[cat.type].maxPts)||100;
+      const minPts=cat.minPts||50;
+      const count=8+Math.floor(rand()*7);
+      if(!state.inscripcion[eid])state.inscripcion[eid]={};
+      if(!state.inscripcion[eid][cat.id])state.inscripcion[eid][cat.id]=[];
+      if(!state.puntajes[eid])state.puntajes[eid]={};
+      if(!state.puntajes[eid][cat.id])state.puntajes[eid][cat.id]=[];
+      for(let i=0;i<count;i++){
+        const apellido=pick(apellidos);
+        const nombre=pick(nombres);
+        const ejemplar=pick(caballos);
+        let puntaje;
+        if(rand()<0.28){puntaje=pts(maxPts*0.40,minPts-0.5);}
+        else{puntaje=pts(minPts,maxPts*0.97);}
+        puntaje=Math.max(0,Math.min(maxPts,Math.round(puntaje*2)/2));
+        const slot=state.inscripcion[eid][cat.id].length;
+        const obj={apellido,nombre,ejemplar};
+        state.inscripcion[eid][cat.id].push(obj);
+        state.puntajes[eid][cat.id].push({_total:puntaje});
+        await saveInscriptoDB(eid,cat.id,slot,obj);
+        await savePuntajeToDB(eid,cat.id,slot,{_total:puntaje});
+        totalCount++;
+      }
+    }
+  }
+  persist();
+  renderAll();
+  toast('✓ Datos 2025-2026 cargados: '+totalCount+' participantes en 4 etapas');
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+async function initApp(){
+  setSyncStatus(isOnline?'syncing':'offline',isOnline?'Conectando...':'Sin conexion');
+  renderAll();
+  if(isOnline){
+    try{
+      await db.from('inscriptos').select('id').limit(1);
+      await db.from('puntajes').select('id').limit(1);
+      await db.from('config').select('key').limit(1);
+      syncFromDB();
+    }catch(e){
+      toast('Primero crea las tablas en Supabase');
+      setSyncStatus('offline','Tablas no encontradas');
+    }
+  }
+}
+</script>
+</body>
+</html>
