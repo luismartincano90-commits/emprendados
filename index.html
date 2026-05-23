@@ -1736,6 +1736,9 @@ function renderScoringAll(){
       const evObj=EVENTS.find(e=>e.id===curEvent);
       btn.style.display=(evObj&&!evObj.cerrado&&!evObj.palermo&&!evObj.es_palermo)?'':'none';
     }
+  } else if(curRole==='lectura'){
+    // Lectura: vista resumen (sin botones de edición), solo eventos cerrados
+    renderScoringResumen();
   } else {
     renderScoringJurado();
   }
@@ -1758,17 +1761,24 @@ function populateScoringEventSelector(){
     const grp=document.createElement('optgroup');
     grp.label='Temporada '+temp.nombre;
     evs.forEach(ev=>{
+      // Solo lectura: mostrar únicamente eventos cerrados
+      if(curRole==='lectura'&&!ev.cerrado)return;
       const opt=document.createElement('option');
       opt.value=ev.id;
-      opt.textContent=(ev.palermo?'⭐ ':'')+ev.name+(ev.fecha?' · '+formatFecha(ev.fecha):'');
+      opt.textContent=(ev.cerrado?'🔒 ':'')+(ev.palermo?'⭐ ':'')+ev.name+(ev.fecha?' · '+formatFecha(ev.fecha):'');
       if(ev.id===cur)opt.selected=true;
       grp.appendChild(opt);
     });
     sel.appendChild(grp);
   });
 
-  if(cur&&EVENTS.find(e=>e.id===cur))curEvent=cur;
-  else if(EVENTS.length>0)curEvent=EVENTS[0].id;
+  const visibleEvents=curRole==='lectura'?EVENTS.filter(e=>e.cerrado):EVENTS;
+  if(cur&&visibleEvents.find(e=>e.id===cur))curEvent=cur;
+  else if(visibleEvents.length>0)curEvent=visibleEvents[0].id;
+  // Si lectura no tiene eventos cerrados, mostrar aviso
+  if(curRole==='lectura'&&visibleEvents.length===0){
+    sel.innerHTML='<option value="">— Aún no hay eventos cerrados —</option>';
+  }
 }
 
 function selectScoringEvent(evId){
@@ -1829,7 +1839,7 @@ function renderScoringResumen(){
     </div>
     <div style="display:flex;gap:8px;">
       ${canClose?`<button onclick="showCerrarEventoModal()" style="padding:7px 16px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#7F1D1D;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔒 Cerrar evento</button>`:''}
-      ${ev.cerrado?`<button onclick="reabrirEvento('${ev.id}')" style="padding:7px 16px;border-radius:6px;border:1px solid #A8D8B8;background:#EAF5EE;color:#1E6B3C;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔓 Reabrir evento</button>`:''}
+      ${ev.cerrado&&curRole!=='lectura'?`<button onclick="reabrirEvento('${ev.id}')" style="padding:7px 16px;border-radius:6px;border:1px solid #A8D8B8;background:#EAF5EE;color:#1E6B3C;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔓 Reabrir evento</button>`:''}
     </div>
   </div>`;
 
@@ -1876,7 +1886,7 @@ function renderScoringResumen(){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           ${badgeHtml}
-          <button onclick="event.stopPropagation();openCatScoring('${cat.id}')" style="font-size:.62rem;padding:3px 10px;border-radius:4px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;font-family:inherit">✏ Cargar puntajes</button>
+          ${curRole!=='lectura'?`<button onclick="event.stopPropagation();openCatScoring('${cat.id}')" style="font-size:.62rem;padding:3px 10px;border-radius:4px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;font-family:inherit">✏ Cargar puntajes</button>`:''}
           <span id="chev-${catId}" style="font-size:.7rem;color:var(--muted)">▼</span>
         </div>
       </div>
