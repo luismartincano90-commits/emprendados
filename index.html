@@ -227,6 +227,18 @@ table.score-tbl tbody td.left{text-align:left;}
 .toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:6px;font-size:.76rem;border-left:4px solid var(--gold);transform:translateY(60px);opacity:0;transition:all .28s;z-index:400;}
 .toast.show{transform:translateY(0);opacity:1;}
 @media(max-width:640px){.sidebar{display:none;}.scoring-layout{display:block;}.scoring-main{padding:14px;}.alta-wrap{padding:14px;}.form-grid{grid-template-columns:1fr;}.form-grid.three{grid-template-columns:1fr 1fr;}}
+@media print{
+  .topbar,.sync-bar,#page-alta,#page-palermo,#page-importar,.sidebar,.page-header-actions,button,.btn,.btn-sm-ghost,.btn-refresh,.readonly-notice,.slots-bar{display:none!important;}
+  body,html{background:#fff!important;}
+  #page-scoring{display:block!important;}
+  .scoring-layout{display:block!important;height:auto!important;}
+  #scoring-content{height:auto!important;overflow:visible!important;padding:8px!important;}
+  .print-header{display:block!important;}
+  table{page-break-inside:auto;}
+  tr{page-break-inside:avoid;}
+  @page{margin:1.5cm;size:A4 landscape;}
+}
+.print-header{display:none;font-family:'Cinzel',serif;font-size:1.1rem;color:#002060;text-align:center;padding:8px 0 14px;border-bottom:2px solid #C9A84C;margin-bottom:12px;}
 </style>
 </head>
 <body>
@@ -290,6 +302,7 @@ table.score-tbl tbody td.left{text-align:left;}
     <div class="topbar-right">
       <span class="role-badge" id="role-badge"></span>
       <button class="btn-sm-ghost" onclick="exportCurrentEvent()" id="btn-export" style="display:none">⬇ Excel</button>
+      <button class="btn-sm-ghost" onclick="printScores()" id="btn-print" style="display:none">🖨 Imprimir PDF</button>
       <button class="btn-sm-ghost" onclick="doLogout()">Salir</button>
     </div>
   </div>
@@ -706,14 +719,24 @@ function doLogin(){
   const role=ROLES[curRole];
   const badge=document.getElementById('role-badge');
   badge.textContent=role.label;badge.className='role-badge '+role.badge;
-  if(role.canEdit)document.getElementById('btn-export').style.display='';
-  // Hide nav items based on role
-  if(!role.canEdit){
-    document.getElementById('nav-alta').style.display='none';
+  // Configurar nav y botones según rol
+  if(curRole==='lectura'){
+    // Solo lectura: ocultar todos los nav items, mostrar Excel + Imprimir
+    ['nav-alta','nav-scoring','nav-palermo','nav-importar'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.style.display='none';
+    });
+    document.getElementById('btn-export').style.display='';
+    document.getElementById('btn-print').style.display='';
+    initApp(()=>showPage('scoring'));
   } else {
-    document.getElementById('nav-importar').style.display='';
+    if(role.canEdit){
+      document.getElementById('btn-export').style.display='';
+      document.getElementById('nav-importar').style.display='';
+    } else {
+      document.getElementById('nav-alta').style.display='none';
+    }
+    initApp();
   }
-  initApp();
 }
 function doLogout(){
   curRole=null;
@@ -722,6 +745,40 @@ function doLogout(){
   document.getElementById('pin-input').value='';
   document.getElementById('login-err').textContent='';
   document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+  // Reset nav visibility for next login
+  ['nav-alta','nav-scoring','nav-palermo'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.style.display='';
+  });
+  document.getElementById('nav-importar').style.display='none';
+  document.getElementById('btn-export').style.display='none';
+  document.getElementById('btn-print').style.display='none';
+}
+
+async function initApp(callback){
+  // Load all data from DB, render initial state, then run optional callback
+  try{
+    await syncFromDB();
+  }catch(e){
+    console.warn('initApp syncFromDB error:',e);
+  }
+  if(typeof callback==='function') callback();
+}
+
+function printScores(){
+  // Insert a print header with event name
+  const evId=document.getElementById('scoring-event-sel')?.value;
+  const ev=EVENTS.find(e=>e.id===evId);
+  const evName=ev?ev.name:'Todos los eventos';
+  let ph=document.getElementById('print-header-el');
+  if(!ph){
+    ph=document.createElement('div');
+    ph.id='print-header-el';
+    ph.className='print-header';
+    const sc=document.getElementById('scoring-content');
+    if(sc)sc.parentNode.insertBefore(ph,sc);
+  }
+  ph.innerHTML=`<div style="font-size:.8rem;color:#888;margin-bottom:4px">Concurso Nacional de Aperos · SRA</div><div>${evName}</div><div style="font-size:.7rem;color:#aaa;margin-top:4px">${new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'})}</div>`;
+  window.print();
 }
 
 // ══ CONFIG ══
@@ -2584,7 +2641,8 @@ function selectImpMode(mode){
     badge.textContent='🏆 Clasificatorias';badge.style.background='var(--gold)';badge.style.color='var(--navy)';
     document.getElementById('imp-btn-sample').style.display='none';
     document.getElementById('imp-sec-etapa').style.display='block';
-    document.getElementById('imp-template-bar').style.display='none';
+    document.getElementById('imp-template-bar').style.display='';
+    document.querySelector('#imp-template-bar p').innerHTML='<strong>¿Necesitás la planilla modelo?</strong> Descargá el Excel con todas las categorías listo para completar.';
     document.getElementById('imp-dropzone-hint').textContent='Subí la Planilla de Inscripcion y Carga (.xlsx) · El sistema detecta las hojas automáticamente';
     document.getElementById('imp-upload-label').textContent='Paso 1B — Subir Planilla de Inscripcion y Carga';
   }
@@ -2619,17 +2677,47 @@ function downloadTemplate(){
     XLSX.utils.book_append_sheet(wb,ws,'Participantes');
     XLSX.writeFile(wb,'plantilla_participantes.xlsx');
   }else{
-    const ws=XLSX.utils.aoa_to_sheet([
-      ['Etapa / Evento','Categoría','N° Orden','Apellido','Nombre','Ejemplar','Teléfono','Mail','Puntaje'],
-      ['Expo Rural Córdoba 2025','Caballo de Trabajo A',1,'García','Juan Carlos','Tordillo','11-4567-8901','juan@mail.com',74.5],
-      ['Expo Rural Córdoba 2025','Lomillo de Sogas Trenzadas',1,'López','María','Pampa','249-123456','maria@mail.com',58],
-      ['Rural del Litoral 2025','Caballo de Trabajo B',1,'Rodríguez','Pedro','Zaino','341-789012','pedro@mail.com',63],
+    // Planilla multi-hoja con todas las categorías SRA
+    const addCatSheet=(wb,nombre,criterios,maxPts)=>{
+      const hdr=['N°','APELLIDO Y NOMBRE',...criterios,'TOTAL','CLASIFICACION FINAL','OBSERVACIONES'];
+      const pts=['','(obligatorio)',...maxPts,'','',''];
+      const rows=[hdr,pts];
+      for(let i=1;i<=30;i++)rows.push([i,...Array(hdr.length-1).fill('')]);
+      const ws=XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols']=[{wpx:40},{wpx:200},...criterios.map(()=>({wpx:70})),{wpx:70},{wpx:80},{wpx:180}];
+      XLSX.utils.book_append_sheet(wb,ws,nombre);
+    };
+    // Hoja Inscripcion con celda de nombre de evento
+    const insWs=XLSX.utils.aoa_to_sheet([
+      ['N° P','Categoria','Nombre y Apellido','Nombre del caballo','Telefono','Mail'],
+      ['NOMBRE DEL EVENTO →','Expo Rural Córdoba 2025','','','',''],
+      ['(Cambia B2 con el nombre real del evento antes de importar)','','','','',''],
     ]);
-    ws['!cols']=[{wpx:160},{wpx:180},{wpx:70},{wpx:120},{wpx:120},{wpx:130},{wpx:120},{wpx:160},{wpx:70}];
-    XLSX.utils.book_append_sheet(wb,ws,'Clasificatorias');
-    const refWs=XLSX.utils.aoa_to_sheet([['ID','Nombre completo'],...CATEGORIES.map(c=>[c.id,c.name])]);
-    XLSX.utils.book_append_sheet(wb,refWs,'Categorias_Ref');
-    XLSX.writeFile(wb,'plantilla_clasificatorias.xlsx');
+    insWs['!cols']=[{wpx:120},{wpx:200},{wpx:200},{wpx:160},{wpx:120},{wpx:160}];
+    XLSX.utils.book_append_sheet(wb,insWs,'Inscripcion');
+    const crit={
+      caballo:['PASO DE TRANQUERA','DESMONTAR Y MONTAR','ANDARES','SUJETADA','EL OCHO','1/4 VUELTA S/PATAS','RETROCESO','LAZO','VESTIMENTA','APERO','ARREGLOS CABALLO','ESTADO CABALLO'],
+      apero:  ['MORFOLOGIA','TRANCO','TROTE','GALOPE DER.','GALOPE IZQ.','TOT. JDO. CABALLOS','ARREGLOS CABALLO','JUEGOS CAB./ESTRIBOS','RECADO/CARONERO','VESTIMENTA','RASTRA/TIRADOR','TOT. JDO. APEROS'],
+      amazon: ['MORFOLOGIA','TRANCO','TROTE','GALOPE DER.','GALOPE IZQ.','TOT. JDO. CABALLOS','ARREGLOS CABALLO','JUEGOS CAB./ESTRIBOS/FUSTA','SILLA/TELERIA/TALABARTERIA','VESTIMENTA/ELEGANCIA/ASIENTO','TOT. JDO. APEROS'],
+      petiso: ['ANDARES','DESMONTAR Y MONTAR','EL OCHO','RETROCESO','VESTIMENTA','APERO','MORFOLOGIA'],
+      conj:   ['CABALLADA','ENTRADA A PISTA','ENTABLADA','RECADOS'],
+    };
+    const pts={
+      caballoB:['0-4','0-10','0-10','0-10','0-10','0-10','0-6','0-10','0-10','0-10','0-5','0-15'],
+      caballoA:['0-4','0-10','0-10','0-10','0-10','0-10','0-6','0-10','0-10','0-10','0-5','0-15'],
+      apero:   ['≤10','≤6','≤6','≤4','≤4','≤30','≤4','≤18','≤23','≤15','≤10','≤70'],
+      amazon:  ['≤10','≤6','≤6','≤4','≤4','≤30','≤5','≤20','≤20','≤25','≤70'],
+      petiso:  ['≤10','≤10','≤10','≤5','≤10','≤10','≤15'],
+      conj:    ['≤20','≤25','≤25','≤30'],
+    };
+    addCatSheet(wb,'CABALLO TRAB. B',crit.caballo,pts.caballoB);
+    addCatSheet(wb,'CABALLO TRAB. A',crit.caballo,pts.caballoA);
+    ['LOMILLO SOGA TREN','LOMILLO SOGA LEZNA BARQ.','BASTOS SOGA TREN.','BASTOS SOGA LEZNA BARQ.','JUEGO PICAZO','APEROS REG.','LOMILLOS CHAPEADOS','BASTOS CHAPEADOS','BASTOS PASADORES LARGOS','BASTOS CORTOS MATADEROS','BASTOS CORTOS LLANURA B'].forEach(n=>addCatSheet(wb,n,crit.apero,pts.apero));
+    ['AMAZONAS PLATA','AMAZONAS SOGA','AMAZONAS SUELA'].forEach(n=>addCatSheet(wb,n,crit.amazon,pts.amazon));
+    addCatSheet(wb,'PETISOS DE TRAB.',crit.petiso,pts.petiso);
+    addCatSheet(wb,'CONJ. REGIONALES',crit.conj,pts.conj);
+    addCatSheet(wb,'CONJ. TRADICIONALISTAS',crit.conj,pts.conj);
+    XLSX.writeFile(wb,'Planilla_Clasificatoria_SRA.xlsx');
   }
   toast('✓ Plantilla descargada');
 }
