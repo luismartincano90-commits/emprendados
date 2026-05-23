@@ -488,9 +488,22 @@ table.score-tbl tbody td.left{text-align:left;}
         <div id="imp-sec-upload">
           <div id="imp-sec-etapa" style="display:none;margin-bottom:14px">
             <div class="section-card armed">
-              <div class="sec-label">Nombre del evento — se lee del archivo automáticamente</div>
-              <input type="text" id="imp-etapa-nombre" class="input-base" placeholder="Se carga al subir el archivo..." style="width:100%;margin-top:10px" oninput="impEventName=this.value.trim()">
-              <p style="font-size:.72rem;color:var(--muted);margin-top:6px">El sistema lo lee de la celda <strong>B2</strong> de la hoja <em>Inscripcion</em>, o del nombre del archivo. Podés editarlo antes de importar.</p>
+              <div class="sec-label">Datos del evento — confirmá antes de importar</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Nombre del evento</label>
+                  <input type="text" id="imp-etapa-nombre" class="input-base" placeholder="Se carga al subir el archivo..." style="width:100%;margin-top:4px" oninput="impEventName=this.value.trim();impUpdateTempDetect()">
+                </div>
+                <div>
+                  <label style="font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Fecha del evento</label>
+                  <input type="date" id="imp-etapa-fecha" class="input-base" style="width:100%;margin-top:4px" oninput="impEventFecha=this.value;impUpdateTempDetect()">
+                </div>
+              </div>
+              <div id="imp-temp-detect" style="margin-top:10px;padding:8px 12px;border-radius:6px;background:var(--light);font-size:.72rem;color:var(--muted);display:none">
+                📅 Temporada detectada: <strong id="imp-temp-detect-name" style="color:var(--navy)"></strong>
+                <span id="imp-temp-detect-nueva" style="margin-left:6px;background:#DCFCE7;color:#166534;padding:1px 8px;border-radius:8px;font-size:.65rem;font-weight:700;display:none">Se creará automáticamente</span>
+              </div>
+              <p style="font-size:.7rem;color:var(--muted);margin-top:8px">El nombre se lee de la celda <strong>B2</strong> de la hoja <em>Inscripcion</em>. La temporada se calcula sola a partir de la fecha.</p>
             </div>
           </div>
           <div class="section-card armed">
@@ -889,13 +902,15 @@ async function crearEvento(nombre, fecha, temporadaId, esPalermo=false){
   return data;
 }
 
-async function crearTemporada(nombre, inicio, fin){
+async function crearTemporada(nombre, inicio, fin, markActive=true){
   const {data,error}=await db.from('temporadas').insert({
-    nombre,inicio,fin,activa:true
+    nombre,inicio,fin,activa:markActive
   }).select().single();
   if(error)throw error;
-  // Mark others as inactive
-  await db.from('temporadas').update({activa:false}).neq('id',data.id);
+  // Solo marcar otras como inactivas si es una creación explícita del usuario
+  if(markActive){
+    await db.from('temporadas').update({activa:false}).neq('id',data.id);
+  }
   await loadEventos();
   return data;
 }
@@ -1007,7 +1022,7 @@ function populateEventSelector(){
   const sep=document.createElement('option');sep.disabled=true;sep.textContent='──────────────────';sel.appendChild(sep);
   const newEvOpt=document.createElement('option');newEvOpt.value='__new_event__';newEvOpt.textContent='+ Crear evento clasificatorio';sel.appendChild(newEvOpt);
   const newPalOpt=document.createElement('option');newPalOpt.value='__new_palermo__';newPalOpt.textContent='+ Crear Final Palermo';sel.appendChild(newPalOpt);
-  const newTempOpt=document.createElement('option');newTempOpt.value='__new_temp__';newTempOpt.textContent='+ Nueva temporada';sel.appendChild(newTempOpt);
+  // + Nueva temporada eliminado — se crea automáticamente al importar clasificatorias
 
   if(curVal&&EVENTS.find(e=>e.id===curVal&&!e.cerrado)) sel.value=curVal;
 }
@@ -1244,16 +1259,7 @@ function onEventoChange(evId){
     showCrearEventoModal(evId==='__new_palermo__');
     return;
   }
-  if(evId==='__new_temp__'){
-    document.getElementById('f-evento').value='';
-    showCrearTemporadaModal();
-    return;
-  }
-  if(evId==='__new__'){
-    document.getElementById('f-evento').value='';
-    showCrearTemporadaModal();
-    return;
-  }
+  // __new_temp__ ya no existe — temporadas se crean automáticamente al importar
   curEvent=evId;
   const ev=EVENTS.find(e=>e.id===evId);
   const name=getEvName(ev);
@@ -2607,6 +2613,50 @@ window.addEventListener('offline',()=>{isOnline=false;setSyncStatus('offline','S
 let impMode=null; // 'participantes' | 'clasificatorias'
 let impPlanillaRows=[]; // rows parsed from planilla multi-sheet format
 let impEventName=''; // event name for clasificatorias planilla import
+let impEventFecha=''; // fecha ISO (YYYY-MM-DD) para clasificatorias
+
+// Detecta la temporada a partir del nombre o fecha del evento.
+// Regla: mes >= 7 → año/año+1 · mes < 7 → (año-1)/año
+function detectTemporada(nombre, fecha){
+  let month=0, year=0;
+  if(fecha){
+    const d=new Date(fecha+'T12:00:00');
+    if(!isNaN(d)){month=d.getMonth()+1;year=d.getFullYear();}
+  }
+  if(!month&&nombre){
+    const MESES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12};
+    const m=nombre.toLowerCase().match(/(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\.?\s*(\d{4})/);
+    if(m){month=MESES[m[1]];year=parseInt(m[2]);}
+    if(!year){const ym=nombre.match(/(\d{4})/);if(ym)year=parseInt(ym[1]);}
+    if(year&&!month)month=8; // si solo hay año, asumir agosto (inicio de temporada)
+  }
+  if(!year)return null;
+  const startY=month>=7?year:year-1;
+  const endY=startY+1;
+  return{
+    nombre:`${startY}-${String(endY).slice(-2)}`,
+    inicio:`${startY}-07-01`,
+    fin:`${endY}-06-30`,
+    startY,endY
+  };
+}
+
+// Actualiza el badge de temporada detectada en el formulario de importación
+function impUpdateTempDetect(){
+  const box=document.getElementById('imp-temp-detect');
+  const nameEl=document.getElementById('imp-temp-detect-name');
+  const nuevaEl=document.getElementById('imp-temp-detect-nueva');
+  if(!box)return;
+  const t=detectTemporada(impEventName,impEventFecha);
+  if(!t){box.style.display='none';return;}
+  box.style.display='block';
+  nameEl.textContent=t.nombre;
+  const existe=state.temporadas&&state.temporadas.some(x=>
+    x.nombre===t.nombre||x.nombre===`Temporada ${t.nombre}`||
+    (x.nombre.includes(String(t.startY))&&x.nombre.includes(String(t.endY)))
+  );
+  nuevaEl.style.display=existe?'none':'inline';
+}
 
 const IMP_FIELDS_PARTICIPANTES=[
   {key:'dni',      label:'DNI',             required:true,  hint:'Sin puntos ni guiones'},
@@ -2636,7 +2686,10 @@ let impRawData=[],impHeaders=[],impMapping={},impPreviewRows=[];
 
 function selectImpMode(mode){
   impMode=mode;
-  impPlanillaRows=[];impEventName='';
+  impPlanillaRows=[];impEventName='';impEventFecha='';
+  const fecInp=document.getElementById('imp-etapa-fecha');if(fecInp)fecInp.value='';
+  const nomInp=document.getElementById('imp-etapa-nombre');if(nomInp)nomInp.value='';
+  const detBox=document.getElementById('imp-temp-detect');if(detBox)detBox.style.display='none';
   document.getElementById('imp-mode-selector').style.display='none';
   document.getElementById('imp-wizard').style.display='block';
   const badge=document.getElementById('imp-mode-badge');
@@ -2757,6 +2810,8 @@ function impHandleFile(file){
         // Mostrar en el input para que el usuario lo confirme/edite
         const inp=document.getElementById('imp-etapa-nombre');
         if(inp)inp.value=impEventName;
+        // Actualizar badge de temporada detectada
+        impUpdateTempDetect();
         // Parsear planilla
         impPlanillaRows=parsePlanillaClasif(wb);
         if(!impPlanillaRows.length){toast('⚠ No se encontraron datos válidos en la planilla');return;}
@@ -2916,14 +2971,32 @@ function resolveCategoria(rawName){
   })||null;
 }
 
-async function resolveOrCreateEvento(nombre){
+async function resolveOrCreateEvento(nombre, fecha=''){
   if(!nombre)return null;
   const nom=nombre.trim();
   const existing=EVENTS.find(e=>e.name.toLowerCase()===nom.toLowerCase());
   if(existing)return existing.id;
-  let tempId=state.temporadas&&state.temporadas.length?state.temporadas[0].id:null;
-  if(!tempId){await crearTemporada('Temporada 2025-2026','2025-08-01','2026-07-31');tempId=state.temporadas[0]?.id;}
-  await crearEvento(nom,null,tempId,false);
+  // Auto-detectar temporada por fecha o nombre
+  const tInfo=detectTemporada(nom,fecha||'');
+  let tempId=null;
+  if(tInfo){
+    const existTemp=state.temporadas&&state.temporadas.find(x=>
+      x.nombre===tInfo.nombre||x.nombre===`Temporada ${tInfo.nombre}`||
+      (x.nombre.includes(String(tInfo.startY))&&x.nombre.includes(String(tInfo.endY)))
+    );
+    if(existTemp){
+      tempId=existTemp.id;
+    }else{
+      // Crear silenciosamente sin pisar la temporada activa actual
+      const nt=await crearTemporada(tInfo.nombre,tInfo.inicio,tInfo.fin,false);
+      tempId=nt.id;
+    }
+  }
+  if(!tempId){
+    tempId=state.temporadas&&state.temporadas.length?state.temporadas[0].id:null;
+    if(!tempId){const nt=await crearTemporada('2025-26','2025-07-01','2026-06-30',true);tempId=nt.id;}
+  }
+  await crearEvento(nom,fecha||null,tempId,false);
   await loadEventos();
   return EVENTS.find(e=>e.name.toLowerCase()===nom.toLowerCase())?.id||null;
 }
@@ -3005,7 +3078,7 @@ async function impStartImport(){
     log.innerHTML+=`<div style="color:var(--gold);font-weight:700;margin-top:2px">📍 ${impEventName}</div>`;log.scrollTop=log.scrollHeight;
     let eventId=null;
     try{
-      eventId=await resolveOrCreateEvento(impEventName);
+      eventId=await resolveOrCreateEvento(impEventName,impEventFecha);
       if(!eventId)throw new Error('No se pudo crear el evento');
     }catch(e){
       log.innerHTML+=`<div style="color:var(--red)">✗ Error al crear evento: ${e.message}</div>`;
