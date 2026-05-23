@@ -261,13 +261,6 @@ table.score-tbl tbody td.left{text-align:left;}
 <!-- ══ APP ══ -->
 <div id="app" style="display:none;">
   <div class="topbar">
-    <div style="display:flex;align-items:center">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="38" height="38" style="flex-shrink:0;margin-right:10px">
-  <circle cx="50" cy="50" r="48" fill="#002060" stroke="#C9A84C" stroke-width="4"/>
-  <text x="50" y="42" text-anchor="middle" font-family="serif" font-size="26" font-weight="bold" fill="#C9A84C">SRA</text>
-  <text x="50" y="60" text-anchor="middle" font-family="serif" font-size="9" fill="#fff" letter-spacing="0.3">SOCIEDAD RURAL</text>
-  <circle cx="50" cy="50" r="44" fill="none" stroke="#C9A84C" stroke-width="0.8" stroke-dasharray="3,3"/>
-</svg>
     <div style="display:flex;align-items:center;gap:10px">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40" style="flex-shrink:0">
         <circle cx="50" cy="50" r="48" fill="#001845" stroke="#C9A84C" stroke-width="4"/>
@@ -472,7 +465,7 @@ table.score-tbl tbody td.left{text-align:left;}
           <div id="imp-mode-badge" style="padding:3px 12px;border-radius:20px;font-size:.7rem;font-weight:700;"></div>
           <div id="imp-steps" style="flex:1;display:flex;align-items:center;gap:0;"></div>
         </div>
-        <div style="background:#FFF8E1;border:1px solid var(--gold);border-radius:10px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;">
+        <div id="imp-template-bar" style="background:#FFF8E1;border:1px solid var(--gold);border-radius:10px;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;">
           <p style="font-size:.78rem;line-height:1.5;color:var(--ink)"><strong>¿No tenés el formato?</strong> Descargá la plantilla con las columnas correctas.</p>
           <div style="display:flex;gap:8px;flex-shrink:0;">
             <button class="btn btn-ghost" onclick="downloadTemplate()" style="white-space:nowrap;font-size:.72rem">⬇ Plantilla Excel</button>
@@ -480,12 +473,19 @@ table.score-tbl tbody td.left{text-align:left;}
           </div>
         </div>
         <div id="imp-sec-upload">
+          <div id="imp-sec-etapa" style="display:none;margin-bottom:14px">
+            <div class="section-card armed">
+              <div class="sec-label">Nombre del evento — se lee del archivo automáticamente</div>
+              <input type="text" id="imp-etapa-nombre" class="input-base" placeholder="Se carga al subir el archivo..." style="width:100%;margin-top:10px" oninput="impEventName=this.value.trim()">
+              <p style="font-size:.72rem;color:var(--muted);margin-top:6px">El sistema lo lee de la celda <strong>B2</strong> de la hoja <em>Inscripcion</em>, o del nombre del archivo. Podés editarlo antes de importar.</p>
+            </div>
+          </div>
           <div class="section-card armed">
-            <div class="sec-label">Paso 1 — Subir archivo Excel</div>
+            <div class="sec-label" id="imp-upload-label">Paso 1 — Subir archivo Excel</div>
             <div id="imp-dropzone" onclick="document.getElementById('imp-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--navy)';this.style.background='#EEF2FF'" ondragleave="this.style.borderColor='var(--border)';this.style.background='var(--light)'" ondrop="impHandleDrop(event)" style="border:2px dashed var(--border);border-radius:10px;padding:44px 24px;text-align:center;cursor:pointer;background:var(--light);transition:all .2s;">
               <div style="font-size:2.4rem;margin-bottom:10px">📂</div>
               <div style="font-family:'Cinzel',serif;font-size:.95rem;color:var(--navy);margin-bottom:6px">Arrastrá el archivo aquí</div>
-              <div style="font-size:.74rem;color:var(--muted);line-height:1.6">o hacé clic para seleccionarlo · Formatos: .xlsx · .xls</div>
+              <div id="imp-dropzone-hint" style="font-size:.74rem;color:var(--muted);line-height:1.6">o hacé clic para seleccionarlo · Formatos: .xlsx · .xls</div>
             </div>
             <input type="file" id="imp-file-input" accept=".xlsx,.xls" onchange="impHandleFile(this.files[0])" style="display:none">
           </div>
@@ -504,10 +504,10 @@ table.score-tbl tbody td.left{text-align:left;}
         <div id="imp-sec-preview" style="display:none">
           <div class="section-card armed">
             <div class="sec-label">Paso 3 — Verificar datos</div>
-            <div id="imp-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px"></div>
+            <div id="imp-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px"></div>
             <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);margin-bottom:16px"><table style="width:100%;border-collapse:collapse;font-size:.74rem"><thead><tr id="imp-thead" style="background:var(--navy)"></tr></thead><tbody id="imp-tbody"></tbody></table></div>
             <div style="display:flex;gap:10px;justify-content:flex-end">
-              <button class="btn btn-ghost" onclick="impGoMapper()">← Editar mapeo</button>
+              <button id="imp-preview-back-btn" class="btn btn-ghost" onclick="impMode==='clasificatorias'?impGoUpload():impGoMapper()">← Editar mapeo</button>
               <button class="btn btn-gold" onclick="impStartImport()">Importar →</button>
             </div>
           </div>
@@ -968,15 +968,15 @@ const CATS_ALPHA = [
   {id:'basCLl',name:'Bastos Pas. Cortos Llanura B',needEjemplar:false},
   {id:'basCM',name:'Bastos Pas. Cortos Mataderos',needEjemplar:false},
   {id:'basPL',name:'Bastos Pasadores Largos',needEjemplar:false},
-  {id:'catA',name:'Caballo de Trabajo A',needEjemplar:true},
-  {id:'catB',name:'Caballo de Trabajo B',needEjemplar:true},
+  {id:'catA',name:'Caballo de Trabajo A',needEjemplar:false},
+  {id:'catB',name:'Caballo de Trabajo B',needEjemplar:false},
   {id:'conjR',name:'Conjuntos Regionales',needEjemplar:false,directFinal:true},
   {id:'conjT',name:'Conjuntos Tradicionalistas',needEjemplar:false},
   {id:'picazo',name:'Juegos Picazos',needEjemplar:false},
   {id:'lomCh',name:'Lomillos Chapeados',needEjemplar:false},
   {id:'lomL',name:'Lomillo de Soga Lezna/Barquero',needEjemplar:false},
   {id:'lomT',name:'Lomillo de Sogas Trenzadas',needEjemplar:false},
-  {id:'petiso',name:'Petisos de Trabajo',needEjemplar:true},
+  {id:'petiso',name:'Petisos de Trabajo',needEjemplar:false},
 ];
 
 let altaCategorias=[{cat:null,ejemplar:''}]; // array of {cat, ejemplar}
@@ -1001,7 +1001,7 @@ function renderCategoriasContainer(){
           </select>
         </div>
         ${needEj?`<div style="flex:1;min-width:160px;">
-          <label class="field-label">Nombre del ejemplar *</label>
+          <label class="field-label">Nombre del ejemplar</label>
           <input type="text" class="input-base" style="height:38px" placeholder="Nombre del caballo"
             value="${item.ejemplar||''}" oninput="altaCategorias[${idx}].ejemplar=this.value;updateAltaSubmit()">
         </div>`:'<div style="flex:1"></div>'}
@@ -1041,10 +1041,6 @@ function onCatChange(idx,val){
   altaCategorias[idx].ejemplar='';
   renderCategoriasContainer();
   updateAltaSubmit();
-  const catDef=CATS_ALPHA.find(c=>c.id===val);
-  if(catDef?.needEjemplar){
-    toast('📝 Ingresá el nombre del ejemplar para continuar');
-  }
 }
 
 function getClasificadosParaPalermoCat(catId){
@@ -1395,7 +1391,7 @@ function updateAltaSubmit(){
     return catDef?.needEjemplar&&!c.ejemplar.trim();
   });
 
-  const ready=apellido&&validCats.length>0&&missingEjemplar.length===0;
+  const ready=apellido&&validCats.length>0;
   const catNames=validCats.map(c=>CATS_ALPHA.find(x=>x.id===c.cat)?.name||'').join(' + ');
   
   document.getElementById('orden-num').textContent='#'+altaNextOrden;
@@ -1407,7 +1403,6 @@ function updateAltaSubmit(){
   let msg='';
   if(!apellido) msg='Ingresá el apellido para continuar';
   else if(!validCats.length) msg='Seleccioná al menos una categoría';
-  else if(missingEjemplar.length>0) msg='Ingresá el nombre del ejemplar en: '+missingEjemplar.map(c=>CATS_ALPHA.find(x=>x.id===c.cat)?.name).join(', ');
   else msg=apellido+' · '+catNames+' · N° '+altaNextOrden;
   
   document.getElementById('submit-summary-text').textContent=msg;
@@ -2543,6 +2538,8 @@ window.addEventListener('offline',()=>{isOnline=false;setSyncStatus('offline','S
 
 // ══ IMPORTAR JS ══
 let impMode=null; // 'participantes' | 'clasificatorias'
+let impPlanillaRows=[]; // rows parsed from planilla multi-sheet format
+let impEventName=''; // event name for clasificatorias planilla import
 
 const IMP_FIELDS_PARTICIPANTES=[
   {key:'dni',      label:'DNI',             required:true,  hint:'Sin puntos ni guiones'},
@@ -2572,28 +2569,40 @@ let impRawData=[],impHeaders=[],impMapping={},impPreviewRows=[];
 
 function selectImpMode(mode){
   impMode=mode;
+  impPlanillaRows=[];impEventName='';
   document.getElementById('imp-mode-selector').style.display='none';
   document.getElementById('imp-wizard').style.display='block';
   const badge=document.getElementById('imp-mode-badge');
   if(mode==='participantes'){
     badge.textContent='👥 Participantes';badge.style.background='var(--light)';badge.style.color='var(--navy)';
     document.getElementById('imp-btn-sample').style.display='none';
+    document.getElementById('imp-sec-etapa').style.display='none';
+    document.getElementById('imp-template-bar').style.display='';
+    document.getElementById('imp-dropzone-hint').textContent='o hacé clic para seleccionarlo · Formatos: .xlsx · .xls';
+    document.getElementById('imp-upload-label').textContent='Paso 1 — Subir archivo Excel';
   }else{
     badge.textContent='🏆 Clasificatorias';badge.style.background='var(--gold)';badge.style.color='var(--navy)';
-    document.getElementById('imp-btn-sample').style.display='';
+    document.getElementById('imp-btn-sample').style.display='none';
+    document.getElementById('imp-sec-etapa').style.display='block';
+    document.getElementById('imp-template-bar').style.display='none';
+    document.getElementById('imp-dropzone-hint').textContent='Subí la Planilla de Inscripcion y Carga (.xlsx) · El sistema detecta las hojas automáticamente';
+    document.getElementById('imp-upload-label').textContent='Paso 1B — Subir Planilla de Inscripcion y Carga';
   }
   renderImpSteps(1);
 }
 
 function renderImpSteps(active){
-  const steps=[['1','Subir'],['2','Mapear'],['3','Verificar'],['4','Importar']];
+  const steps=impMode==='clasificatorias'
+    ?[['1','Subir'],['2','Verificar'],['3','Importar']]
+    :[['1','Subir'],['2','Mapear'],['3','Verificar'],['4','Importar']];
   const el=document.getElementById('imp-steps');
   if(!el)return;
+  const lastIdx=steps.length-1;
   el.innerHTML=steps.map(([n,lbl],i)=>{
     const st=i+1<active?'done':i+1===active?'active':'';
     const numStyle=st==='done'?'background:var(--green);border-color:var(--green);color:#fff':st==='active'?'background:var(--navy);border-color:var(--navy);color:#fff':'background:#fff;border-color:var(--border);color:var(--muted)';
     const lblStyle=st==='active'?'color:var(--ink);font-weight:600':st==='done'?'color:var(--green);font-weight:600':'color:var(--muted)';
-    const sep=i<3?`<div style="flex:1;height:1px;background:var(--border);margin:0 8px"></div>`:'';
+    const sep=i<lastIdx?`<div style="flex:1;height:1px;background:var(--border);margin:0 8px"></div>`:'';
     return`<div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;border:1.5px solid;flex-shrink:0;${numStyle}">${n}</div><span style="font-size:.68rem;white-space:nowrap;${lblStyle}">${lbl}</span></div>${sep}`;
   }).join('');
 }
@@ -2634,13 +2643,36 @@ function impHandleFile(file){
   reader.onload=function(e){
     try{
       const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const data=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'DD/MM/YYYY'});
-      if(!data||data.length<2){toast('⚠ El archivo está vacío');return;}
-      impHeaders=data[0].map(h=>String(h||'').trim());
-      impRawData=data.slice(1).filter(row=>row.some(c=>c!==null&&c!==undefined&&c!==''));
-      impShowMapper(file.name);
-    }catch(err){toast('⚠ Error: '+err.message);}
+      if(impMode==='clasificatorias'){
+        // Leer nombre del evento: 1) celda B2 de Inscripcion, 2) nombre del archivo
+        const insWs=wb.Sheets['Inscripcion'];
+        if(insWs){
+          const insRows=XLSX.utils.sheet_to_json(insWs,{header:1,defval:null});
+          // Row index 1 = fila 2; col index 1 = columna B
+          const cellVal=insRows[1]&&insRows[1][1]?String(insRows[1][1]).trim():'';
+          if(cellVal&&cellVal.toUpperCase()!=='INSTRUCCIONES'&&cellVal.length>3)impEventName=cellVal;
+        }
+        if(!impEventName){
+          // Fallback: nombre del archivo sin extensión
+          impEventName=file.name.replace(/\.(xlsx|xls)$/i,'').trim();
+        }
+        // Mostrar en el input para que el usuario lo confirme/edite
+        const inp=document.getElementById('imp-etapa-nombre');
+        if(inp)inp.value=impEventName;
+        // Parsear planilla
+        impPlanillaRows=parsePlanillaClasif(wb);
+        if(!impPlanillaRows.length){toast('⚠ No se encontraron datos válidos en la planilla');return;}
+        impPlanillaPreview();
+      }else{
+        // Participantes: flujo con mapeo de columnas
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const data=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:'DD/MM/YYYY'});
+        if(!data||data.length<2){toast('⚠ El archivo está vacío');return;}
+        impHeaders=data[0].map(h=>String(h||'').trim());
+        impRawData=data.slice(1).filter(row=>row.some(c=>c!==null&&c!==undefined&&c!==''));
+        impShowMapper(file.name);
+      }
+    }catch(err){toast('⚠ Error al leer archivo: '+err.message);}
   };
   reader.readAsBinaryString(file);
 }
@@ -2669,6 +2701,103 @@ function impShowMapper(filename){
   renderImpSteps(2);
   document.getElementById('imp-sec-upload').style.display='none';
   document.getElementById('imp-sec-mapper').style.display='block';
+}
+
+
+// ══ PLANILLA CLASIFICATORIAS PARSER ══
+function parsePlanillaClasif(wb){
+  const results=[];
+  const SKIP=['Inscripcion'];
+  // Build map N° → nombre completo from Inscripcion sheet
+  const inscMap={};
+  if(wb.Sheets['Inscripcion']){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets['Inscripcion'],{header:1,defval:null});
+    for(let i=1;i<rows.length;i++){
+      const r=rows[i];
+      if(r&&r[0]!=null&&r[2]!=null)inscMap[String(r[0]).trim()]=String(r[2]).trim();
+    }
+  }
+  for(const sheetName of wb.SheetNames){
+    if(SKIP.includes(sheetName))continue;
+    const ws=wb.Sheets[sheetName];if(!ws)continue;
+    const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    if(!data||data.length<3)continue;
+    // Find header row (col B contains "APELLIDO") and OBSERV col
+    let headerRow=-1,obsCol=-1;
+    for(let i=0;i<Math.min(8,data.length);i++){
+      const row=data[i]||[];
+      if(headerRow<0&&row[1]&&String(row[1]).toUpperCase().includes('APELLIDO'))headerRow=i;
+      for(let j=0;j<row.length;j++){
+        if(row[j]&&String(row[j]).toUpperCase().includes('OBSERV')){obsCol=j;break;}
+      }
+      if(headerRow>=0&&obsCol>=0)break;
+    }
+    if(headerRow<0)continue;
+    // TOTAL is always 2 cols before OBSERV: [...TOTAL | CLASIF FINAL | OBSERV]
+    let totalCol=obsCol>=2?obsCol-2:-1;
+    if(totalCol<0){
+      // Fallback: scan rows for "TOTAL" or "TOTAL PUNTOS" header
+      for(let i=0;i<Math.min(8,data.length);i++){
+        const row=data[i]||[];
+        for(let j=row.length-1;j>=0;j--){
+          const h=String(row[j]||'').toUpperCase().trim();
+          if(h==='TOTAL'||h==='TOTAL PUNTOS'){totalCol=j;break;}
+        }
+        if(totalCol>=0)break;
+      }
+    }
+    if(totalCol<0)continue;
+    // Read data rows, skip sub-header rows
+    const skipRegex=/^(pts|hasta|puntaj|observ|clasif|apellido|nombre|andares|morfol|retroc|vestim|apero|lazo|total|entrada|caball|emboca|tranco|trote|galope|desmont|sujet|el ocho|vuelta|retro|caronas|juegos|recado|rastra)/i;
+    for(let i=headerRow+1;i<data.length;i++){
+      const row=data[i]||[];
+      let nombre=row[1]!=null?String(row[1]).trim():'';
+      // If formula or empty, look up from Inscripcion map
+      if(!nombre||nombre.startsWith('=')||nombre.startsWith('#')||nombre===''){
+        const numP=row[0]!=null?String(row[0]).trim():'';
+        if(numP&&inscMap[numP])nombre=inscMap[numP];else continue;
+      }
+      if(skipRegex.test(nombre))continue;
+      if(nombre.length<3||nombre.includes('REF!'))continue;
+      const totalRaw=row[totalCol];
+      if(totalRaw===null||totalRaw===undefined||totalRaw==='')continue;
+      const total=typeof totalRaw==='number'?totalRaw:parseFloat(String(totalRaw).replace(',','.'));
+      if(isNaN(total)||total<=0)continue;
+      results.push({categoria:sheetName,participante:nombre,total:Math.round(total*100)/100});
+    }
+  }
+  return results;
+}
+
+function impPlanillaPreview(){
+  const byCat={};
+  for(const r of impPlanillaRows){if(!byCat[r.categoria])byCat[r.categoria]=[];byCat[r.categoria].push(r);}
+  const catCount=Object.keys(byCat).length;
+  document.getElementById('imp-stats').innerHTML=[
+    ['Categorías',catCount,'var(--navy)'],
+    ['Participantes',impPlanillaRows.length,'var(--gold)'],
+    ['Evento',impEventName?'✓':'✗',impEventName?'var(--green)':'var(--red)'],
+  ].map(([l,v,c])=>`<div style="background:var(--light);border-radius:8px;padding:12px;text-align:center"><div style="font-family:'Cinzel',serif;font-size:1.5rem;color:${c};font-weight:700">${v}</div><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">${l}</div></div>`).join('');
+  document.getElementById('imp-thead').innerHTML=`<th style="padding:8px 10px;color:#fff;font-size:.62rem">#</th><th style="padding:8px 10px;color:#fff;font-size:.62rem;text-align:left">Participante</th><th style="padding:8px 10px;color:#fff;font-size:.62rem;text-align:right">Puntaje</th>`;
+  let tableHtml='';
+  for(const[cat,rows] of Object.entries(byCat)){
+    tableHtml+=`<tr style="background:var(--navy)"><td colspan="3" style="padding:8px 10px;color:var(--gold);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em">${cat} · ${rows.length} participantes</td></tr>`;
+    [...rows].sort((a,b)=>b.total-a.total).forEach((r,idx)=>{
+      tableHtml+=`<tr style="border-bottom:1px solid var(--light);background:${idx%2===0?'#fff':'var(--light)'}"><td style="padding:6px 10px;font-size:.7rem;color:var(--muted)">${idx+1}</td><td style="padding:6px 10px;font-size:.76rem;font-weight:600">${r.participante}</td><td style="padding:6px 10px;font-size:.76rem;text-align:right;color:var(--navy);font-weight:700">${r.total}</td></tr>`;
+    });
+  }
+  document.getElementById('imp-tbody').innerHTML=tableHtml;
+  const backBtn=document.getElementById('imp-preview-back-btn');
+  if(backBtn)backBtn.textContent='← Cambiar archivo';
+  renderImpSteps(2);
+  document.getElementById('imp-sec-upload').style.display='none';
+  document.getElementById('imp-sec-preview').style.display='block';
+}
+
+function impGoUpload(){
+  renderImpSteps(1);
+  document.getElementById('imp-sec-preview').style.display='none';
+  document.getElementById('imp-sec-upload').style.display='block';
 }
 
 function impResetUpload(){
@@ -2762,6 +2891,66 @@ function impGoMapper(){
 }
 
 async function impStartImport(){
+  const isClasif=impMode==='clasificatorias';
+  if(isClasif){
+    // Planilla mode: use impPlanillaRows
+    if(!impPlanillaRows.length){toast('⚠ No hay datos para importar');return;}
+    if(!impEventName){toast('⚠ Falta el nombre del evento');return;}
+    renderImpSteps(3);
+    document.getElementById('imp-sec-preview').style.display='none';
+    document.getElementById('imp-sec-progress').style.display='block';
+    let nw=0,err=0;
+    const log=document.getElementById('imp-log');log.innerHTML='';
+    document.getElementById('imp-prog-label').textContent='Iniciando...';
+    document.getElementById('imp-prog-pct').textContent='0%';
+    document.getElementById('imp-prog-fill').style.width='0%';
+    log.innerHTML+=`<div style="color:var(--gold);font-weight:700;margin-top:2px">📍 ${impEventName}</div>`;log.scrollTop=log.scrollHeight;
+    let eventId=null;
+    try{
+      eventId=await resolveOrCreateEvento(impEventName);
+      if(!eventId)throw new Error('No se pudo crear el evento');
+    }catch(e){
+      log.innerHTML+=`<div style="color:var(--red)">✗ Error al crear evento: ${e.message}</div>`;
+      document.getElementById('imp-prog-label').textContent='Error al crear evento';
+      return;
+    }
+    const byCat={};
+    for(const r of impPlanillaRows){if(!byCat[r.categoria])byCat[r.categoria]=[];byCat[r.categoria].push(r);}
+    const totalRecs=impPlanillaRows.length;let step=0;
+    for(const[catName,rows] of Object.entries(byCat)){
+      const catObj=resolveCategoria(catName);
+      const catId=catObj?catObj.id:catName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').substring(0,40);
+      const inscBatch=[];const puntBatch=[];
+      rows.forEach((r,idx)=>{
+        inscBatch.push({evento:eventId,categoria:catId,slot:idx,apellido:r.participante,nombre:'',ejemplar:'',tel:'',mail:''});
+        if(r.total>0)puntBatch.push({evento:eventId,categoria:catId,slot:idx,scores:{_total:r.total}});
+      });
+      try{
+        const{error:e1}=await db.from('inscriptos').upsert(inscBatch,{onConflict:'evento,categoria,slot'});if(e1)throw new Error(e1.message);
+        if(puntBatch.length){const{error:e2}=await db.from('puntajes').upsert(puntBatch,{onConflict:'evento,categoria,slot'});if(e2)throw new Error(e2.message);}
+        nw+=rows.length;log.innerHTML+=`<div style="color:var(--green)">  ✓ ${catName}: ${rows.length} part.</div>`;
+      }catch(e){err+=rows.length;log.innerHTML+=`<div style="color:var(--red)">  ✗ ${catName}: ${e.message}</div>`;}
+      step+=rows.length;
+      document.getElementById('imp-prog-fill').style.width=Math.round(Math.min(step/totalRecs,1)*100)+'%';
+      document.getElementById('imp-prog-pct').textContent=Math.round(Math.min(step/totalRecs,1)*100)+'%';
+      document.getElementById('imp-prog-label').textContent=`Importando ${catName}...`;
+      log.scrollTop=log.scrollHeight;await new Promise(r=>setTimeout(r,60));
+    }
+    await syncFromDB();
+    document.getElementById('imp-prog-fill').style.width='100%';document.getElementById('imp-prog-pct').textContent='100%';document.getElementById('imp-prog-label').textContent='Completado';
+    setTimeout(()=>{
+      document.getElementById('imp-sec-progress').style.display='none';document.getElementById('imp-sec-result').style.display='block';
+      document.getElementById('imp-result-stats').innerHTML=[
+        ['Importados',nw,'var(--green)'],
+        ['Categorías',Object.keys(byCat).length,'var(--gold)'],
+        ['Errores',err,err>0?'var(--red)':'var(--muted)'],
+      ].map(([l,v,c])=>`<div style="text-align:center"><strong style="display:block;font-family:'Cinzel',serif;font-size:1.5rem;color:${c}">${v}</strong><span style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">${l}</span></div>`).join('');
+      document.getElementById('imp-result-msg').textContent='Resultados de clasificatorias importados. Revisá la pestaña Palermo para ver la clasificación.';
+    },500);
+    return;
+  }
+
+  // Participantes mode (original flow)
   const valid=impPreviewRows.filter(r=>r._valid);
   if(!valid.length){toast('⚠ No hay filas válidas');return;}
   renderImpSteps(4);
@@ -2787,40 +2976,6 @@ async function impStartImport(){
       await new Promise(r=>setTimeout(r,80));
     }
     document.getElementById('imp-result-msg').textContent='Los participantes ya están en el directorio. Al inscribirse con su DNI los datos se cargarán automáticamente.';
-  }else{
-    const byEtapa={};
-    for(const r of valid){if(!byEtapa[r.etapa])byEtapa[r.etapa]={rows:[],eventId:null};byEtapa[r.etapa].rows.push(r);}
-    const etapas=Object.keys(byEtapa);
-    let step=0;const totalSteps=valid.length+etapas.length;
-    for(const etapaNombre of etapas){
-      const group=byEtapa[etapaNombre];
-      log.innerHTML+=`<div style="color:var(--gold);font-weight:700;margin-top:6px">📍 ${etapaNombre}</div>`;log.scrollTop=log.scrollHeight;
-      try{group.eventId=await resolveOrCreateEvento(etapaNombre);if(!group.eventId)throw new Error('No se pudo crear el evento');}
-      catch(e){log.innerHTML+=`<div style="color:var(--red)">✗ ${e.message}</div>`;err+=group.rows.length;continue;}
-      step++;document.getElementById('imp-prog-fill').style.width=Math.round((step/totalSteps)*100)+'%';
-      const byCat={};
-      group.rows.forEach(r=>{const cid=r._catObj.id;if(!byCat[cid])byCat[cid]=[];byCat[cid].push(r);});
-      for(const catId of Object.keys(byCat)){
-        const catRows=byCat[catId];const inscBatch=[];const puntBatch=[];
-        catRows.forEach((r,idx)=>{
-          const slot=r.slot&&parseInt(r.slot)>0?parseInt(r.slot)-1:idx;
-          const pts=parseFloat(r.puntaje)||0;
-          inscBatch.push({evento:group.eventId,categoria:catId,slot,apellido:r.apellido||'',nombre:r.nombre||'',ejemplar:r.ejemplar||'',tel:r.tel||'',mail:r.mail||''});
-          if(pts>0)puntBatch.push({evento:group.eventId,categoria:catId,slot,scores:{_total:pts}});
-        });
-        try{
-          const{error:e1}=await db.from('inscriptos').upsert(inscBatch,{onConflict:'evento,categoria,slot'});if(e1)throw new Error(e1.message);
-          if(puntBatch.length){const{error:e2}=await db.from('puntajes').upsert(puntBatch,{onConflict:'evento,categoria,slot'});if(e2)throw new Error(e2.message);}
-          nw+=catRows.length;log.innerHTML+=`<div style="color:var(--green)">  ✓ ${CATEGORIES.find(c=>c.id===catId)?.short||catId}: ${catRows.length} participantes</div>`;
-        }catch(e){err+=catRows.length;log.innerHTML+=`<div style="color:var(--red)">  ✗ ${catId}: ${e.message}</div>`;}
-        step+=catRows.length;
-        document.getElementById('imp-prog-fill').style.width=Math.round(Math.min(step/totalSteps,1)*100)+'%';
-        document.getElementById('imp-prog-pct').textContent=Math.round(Math.min(step/totalSteps,1)*100)+'%';
-        log.scrollTop=log.scrollHeight;await new Promise(r=>setTimeout(r,50));
-      }
-    }
-    await syncFromDB();
-    document.getElementById('imp-result-msg').textContent='Los resultados están cargados. Revisá la pestaña Palermo para ver la clasificación.';
   }
 
   document.getElementById('imp-prog-fill').style.width='100%';document.getElementById('imp-prog-pct').textContent='100%';document.getElementById('imp-prog-label').textContent='Completado';
@@ -2835,7 +2990,7 @@ async function impStartImport(){
 }
 
 function impResetAll(){
-  impMode=null;
+  impMode=null;impPlanillaRows=[];impEventName='';
   document.getElementById('imp-mode-selector').style.display='block';
   document.getElementById('imp-wizard').style.display='none';
   impResetUpload();
@@ -2903,3 +3058,4 @@ async function initApp(){
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
