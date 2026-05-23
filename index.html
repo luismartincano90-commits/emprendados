@@ -740,7 +740,13 @@ function doLogin(){
     });
     document.getElementById('btn-export').style.display='';
     document.getElementById('btn-print').style.display='';
-    initApp(()=>showPage('scoring'));
+    // Activar page-scoring INMEDIATAMENTE — no esperar la sync async
+    // (page-alta es la default activa; si esperamos la sync el usuario ve el form de inscripción)
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.getElementById('page-scoring').classList.add('active');
+    curPage='scoring';
+    // La sync corre en background; syncFromDB llama renderScoringAll() al terminar
+    initApp();
   } else {
     if(role.canEdit){
       document.getElementById('btn-export').style.display='';
@@ -1807,8 +1813,9 @@ function renderScoringResumen(){
   if(!container)return;
 
   if(!ev||EVENTS.length===0){
+    const syncing=document.getElementById('sync-dot')?.classList.contains('syncing');
     const msg=isLectura
-      ?'No hay resultados disponibles aún.'
+      ?(syncing?'<span style="opacity:.5">Cargando resultados...</span>':'No hay resultados disponibles aún.')
       :'No hay eventos creados aún.<br>Ir a <strong>Inscripción</strong> para crear el primer evento.';
     container.innerHTML=`<div style="text-align:center;padding:60px;color:var(--muted)"><p style="font-size:.85rem">${msg}</p></div>`;
     return;
