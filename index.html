@@ -1799,20 +1799,26 @@ function selectScoringEvent(evId){
   }
 }
 
-// ── ADMIN: RESUMEN POR EVENTO ──
+// ── RESUMEN POR EVENTO (admin y solo lectura) ──
 function renderScoringResumen(){
+  const isLectura=curRole==='lectura';
   const ev=EVENTS.find(e=>e.id===curEvent);
-  if(!ev||EVENTS.length===0){
-    document.getElementById('scoring-content').innerHTML=`<div style="text-align:center;padding:60px;color:var(--muted)"><p style="font-size:.85rem">No hay eventos creados aún.<br>Ir a <strong>Inscripción</strong> para crear el primer evento.</p></div>`;
-    return;
-  }
-  const evName=getEvName(ev);
-  const evFecha=ev.fecha?formatFecha(ev.fecha):'Sin fecha asignada';
   const container=document.getElementById('scoring-content');
   if(!container)return;
 
+  if(!ev||EVENTS.length===0){
+    const msg=isLectura
+      ?'No hay resultados disponibles aún.'
+      :'No hay eventos creados aún.<br>Ir a <strong>Inscripción</strong> para crear el primer evento.';
+    container.innerHTML=`<div style="text-align:center;padding:60px;color:var(--muted)"><p style="font-size:.85rem">${msg}</p></div>`;
+    return;
+  }
+
+  const evName=getEvName(ev);
+  const temp=getTemporadaDeEvento(curEvent);
+
   // Calc global stats
-  let totalInsc=0,totalConPuntaje=0,totalClasifican=0,catsActivas=0;
+  let totalInsc=0,totalConResultado=0,totalClasifican=0,catsActivas=0;
   CATEGORIES.forEach(cat=>{
     const filled=filledInsc(curEvent,cat.id);
     if(filled.length>0)catsActivas++;
@@ -1825,32 +1831,50 @@ function renderScoringResumen(){
         if(!insc[i]||!insc[i].apellido)return;
         const tot=calcTotal(cat.type,scores[i]||{});
         if(tot>0){
-          totalConPuntaje++;
+          totalConResultado++;
           if(tot>=cat.minPts&&ranks[i]>0&&ranks[i]<=cat.maxClasif)totalClasifican++;
         }
       });
     }
   });
 
-  const temp=getTemporadaDeEvento(curEvent);
   let html='';
-  const cerradoBadge=ev.cerrado?'&nbsp;<span style="font-size:.7rem;background:#FEF2F2;color:var(--red);padding:2px 8px;border-radius:8px;border:1px solid #FECACA">🔒 CERRADO</span>':'';
-  const firmaTxt=ev.cerrado&&ev.firma?`<div style="font-size:.68rem;color:var(--muted);margin-top:4px">Cerrado por: <strong>${ev.firma.nombre}</strong> · ${ev.firma.fecha}</div>`:'';
-  const canClose=!ev.cerrado&&!ev.palermo&&!ev.es_palermo;
-  html+=`<div style="background:#fff;border-radius:10px;border:1px solid ${ev.cerrado?'#FECACA':'var(--border)'};padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-    <div>
-      <div style="font-family:'Cinzel',serif;font-size:1.05rem;color:var(--navy)">${evName}${ev.palermo?'&nbsp;<span style="font-size:.7rem;background:var(--gold2);color:var(--navy);padding:2px 8px;border-radius:8px">PALERMO</span>':''}${cerradoBadge}</div>
-      <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${temp?'Temporada '+temp.nombre+' &middot; ':''} ${ev.fecha?formatFecha(ev.fecha):'Sin fecha'} ${ev.palermo?'&middot; Final':'&middot; Clasificatoria'}</div>
-      ${firmaTxt}
-    </div>
-    <div style="display:flex;gap:8px;">
-      ${canClose?`<button onclick="showCerrarEventoModal()" style="padding:7px 16px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#7F1D1D;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔒 Cerrar evento</button>`:''}
-      ${ev.cerrado&&curRole!=='lectura'?`<button onclick="reabrirEvento('${ev.id}')" style="padding:7px 16px;border-radius:6px;border:1px solid #A8D8B8;background:#EAF5EE;color:#1E6B3C;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔓 Reabrir evento</button>`:''}
-    </div>
-  </div>`;
 
-  const statsItems=[['Inscriptos',totalInsc,'var(--navy)'],['Con puntaje',totalConPuntaje,'var(--green)'],['Clasifican',totalClasifican,'var(--gold)'],['Categorías activas',catsActivas,'var(--mid)']];
-  html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">`;
+  // ── Cabecera del evento ──
+  if(isLectura){
+    // Vista pública: cabecera limpia con temporada y firma de cierre
+    const firmaTxt=ev.cerrado&&ev.firma
+      ?`<div style="font-size:.68rem;color:var(--muted);margin-top:5px">Acta firmada por <strong>${ev.firma.nombre}</strong>${ev.firma.aclaracion?' · '+ev.firma.aclaracion:''} · ${ev.firma.fecha}</div>`
+      :'';
+    html+=`<div style="background:#fff;border-radius:10px;border:1px solid var(--border);padding:14px 20px;margin-bottom:16px;">
+      <div style="font-family:'Cinzel',serif;font-size:1.1rem;color:var(--navy)">${evName}${ev.palermo?'&nbsp;<span style="font-size:.7rem;background:var(--gold2);color:var(--navy);padding:2px 8px;border-radius:8px">FINAL PALERMO</span>':''}</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:3px">${temp?'Temporada '+temp.nombre+' &middot; ':''} ${ev.fecha?formatFecha(ev.fecha):''}${ev.palermo?' · Final':' · Clasificatoria'}</div>
+      ${firmaTxt}
+    </div>`;
+  } else {
+    // Vista admin: cabecera con botones de gestión
+    const cerradoBadge=ev.cerrado?'&nbsp;<span style="font-size:.7rem;background:#FEF2F2;color:var(--red);padding:2px 8px;border-radius:8px;border:1px solid #FECACA">🔒 CERRADO</span>':'';
+    const firmaTxt=ev.cerrado&&ev.firma?`<div style="font-size:.68rem;color:var(--muted);margin-top:4px">Cerrado por: <strong>${ev.firma.nombre}</strong> · ${ev.firma.fecha}</div>`:'';
+    const canClose=!ev.cerrado&&!ev.palermo&&!ev.es_palermo;
+    html+=`<div style="background:#fff;border-radius:10px;border:1px solid ${ev.cerrado?'#FECACA':'var(--border)'};padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-family:'Cinzel',serif;font-size:1.05rem;color:var(--navy)">${evName}${ev.palermo?'&nbsp;<span style="font-size:.7rem;background:var(--gold2);color:var(--navy);padding:2px 8px;border-radius:8px">PALERMO</span>':''}${cerradoBadge}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:2px">${temp?'Temporada '+temp.nombre+' &middot; ':''} ${ev.fecha?formatFecha(ev.fecha):'Sin fecha'} ${ev.palermo?'&middot; Final':'&middot; Clasificatoria'}</div>
+        ${firmaTxt}
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${canClose?`<button onclick="showCerrarEventoModal()" style="padding:7px 16px;border-radius:6px;border:1px solid #FECACA;background:#FEF2F2;color:#7F1D1D;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔒 Cerrar evento</button>`:''}
+        ${ev.cerrado?`<button onclick="reabrirEvento('${ev.id}')" style="padding:7px 16px;border-radius:6px;border:1px solid #A8D8B8;background:#EAF5EE;color:#1E6B3C;font-family:inherit;font-size:.74rem;font-weight:700;cursor:pointer;">🔓 Reabrir evento</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  // ── Stats ──
+  const statsItems=isLectura
+    ?[['Participantes',totalInsc,'var(--navy)'],['Clasificados',totalClasifican,'var(--gold)'],['Categorías',catsActivas,'var(--mid)']]
+    :[['Inscriptos',totalInsc,'var(--navy)'],['Con resultado',totalConResultado,'var(--green)'],['Clasifican',totalClasifican,'var(--gold)'],['Categorías activas',catsActivas,'var(--mid)']];
+  const statCols=statsItems.length;
+  html+=`<div style="display:grid;grid-template-columns:repeat(${statCols},1fr);gap:10px;margin-bottom:18px;">`;
   statsItems.forEach(([l,v,clr])=>{
     html+=`<div style="background:#fff;border-radius:8px;border:1px solid var(--border);padding:12px;text-align:center">
       <div style="font-family:'Cinzel',serif;font-size:1.5rem;color:${clr};font-weight:700">${v}</div>
@@ -1859,12 +1883,10 @@ function renderScoringResumen(){
   });
   html+=`</div><div style="display:flex;flex-direction:column;gap:8px;">`;
 
+  // ── Categorías ──
   CATEGORIES.forEach(cat=>{
     const filled=filledInsc(curEvent,cat.id);
-    // Skip categories with no inscriptos and no scores
-    if(!filled.length&&!hasScores(curEvent,cat.id)){
-      return;
-    }
+    if(!filled.length&&!hasScores(curEvent,cat.id))return;
 
     const hasSc=hasScores(curEvent,cat.id);
     const ranks=rankScores(curEvent,cat.id);
@@ -1881,32 +1903,38 @@ function renderScoringResumen(){
 
     const badgeHtml=hasSc
       ?`<span style="font-size:.62rem;padding:2px 8px;border-radius:8px;background:#DCFCE7;color:#166534;font-weight:600">${clasifCount} clasifican</span>`
-      :`<span style="font-size:.62rem;padding:2px 8px;border-radius:8px;background:#FEF9C3;color:#854D0E;font-weight:600">Sin puntajes</span>`;
+      :`<span style="font-size:.62rem;padding:2px 8px;border-radius:8px;background:#FEF9C3;color:#854D0E;font-weight:600">${isLectura?'Sin resultados':'Sin puntajes'}</span>`;
+
+    const subInfo=isLectura
+      ?`${filled.length} participante${filled.length!==1?'s':''}`
+      :`${filled.length} inscripto${filled.length!==1?'s':''} &middot; máx. ${crit.maxPts} pts`;
 
     const catId='res-'+cat.id;
     html+=`<div style="background:#fff;border-radius:10px;border:1px solid var(--border);overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 16px;cursor:pointer" onclick="toggleCatResumen('${catId}')">
         <div>
           <div style="font-size:.8rem;font-weight:700;color:var(--navy)">${cat.name}</div>
-          <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${filled.length} inscripto${filled.length!==1?'s':''} &middot; máx. ${crit.maxPts} pts</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:2px">${subInfo}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           ${badgeHtml}
-          ${curRole!=='lectura'?`<button onclick="event.stopPropagation();openCatScoring('${cat.id}')" style="font-size:.62rem;padding:3px 10px;border-radius:4px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;font-family:inherit">✏ Cargar puntajes</button>`:''}
+          ${!isLectura?`<button onclick="event.stopPropagation();openCatScoring('${cat.id}')" style="font-size:.62rem;padding:3px 10px;border-radius:4px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;font-family:inherit">✏ Cargar puntajes</button>`:''}
           <span id="chev-${catId}" style="font-size:.7rem;color:var(--muted)">▼</span>
         </div>
       </div>
       <div id="${catId}" style="display:none;border-top:1px solid var(--light);">`;
 
     if(!hasSc){
-      html+=`<div style="padding:14px 16px;font-size:.76rem;color:var(--muted);text-align:center">No hay puntajes cargados aún.</div>`;
+      html+=`<div style="padding:14px 16px;font-size:.76rem;color:var(--muted);text-align:center">${isLectura?'Sin resultados registrados para esta categoría.':'No hay puntajes cargados aún.'}</div>`;
     } else {
+      // Columnas: lectura muestra Pos / Participante / Total / Clasifica (texto)
+      //           admin muestra Pos / Participante / Puntaje / Palermo (dot)
       html+=`<table style="width:100%;border-collapse:collapse;font-size:.76rem">
         <thead><tr style="background:var(--light)">
           <th style="padding:7px 12px;text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Pos.</th>
           <th style="padding:7px 12px;text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Participante</th>
-          <th style="padding:7px 12px;text-align:center;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Puntaje</th>
-          <th style="padding:7px 12px;text-align:center;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Palermo</th>
+          <th style="padding:7px 12px;text-align:center;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${isLectura?'Total':'Puntaje'}</th>
+          <th style="padding:7px 12px;text-align:center;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${isLectura?'Clasifica':'Palermo'}</th>
         </tr></thead><tbody>`;
 
       const rowsWithIdx=insc.map((p,i)=>({p,i,tot:calcTotal(cat.type,scores[i]||{}),rank:ranks[i]}))
@@ -1915,11 +1943,19 @@ function renderScoringResumen(){
       rowsWithIdx.forEach(({p,i,tot,rank})=>{
         const clasifica=tot>=cat.minPts&&rank>0&&rank<=cat.maxClasif;
         const posStyle=rank===1?'background:var(--gold);color:var(--navy)':rank===2?'background:#D3D1C7;color:#444':rank===3?'background:#cd7f32;color:#fff':'background:var(--light);color:var(--muted)';
-        html+=`<tr style="border-bottom:1px solid var(--light)">
+        // Para lectura: no mostrar ejemplar (dato interno), solo nombre
+        const nombreCell=isLectura
+          ?`${p.apellido}${p.nombre?' '+p.nombre:''}`
+          :`${p.apellido}${p.nombre?' '+p.nombre:''}${p.ejemplar?' <span style="font-weight:400;color:var(--muted)">· '+p.ejemplar+'</span>':''}`;
+        // Columna clasifica: lectura → texto legible; admin → punto de color
+        const clasificaCell=isLectura
+          ?(clasifica?`<span style="font-size:.68rem;font-weight:700;color:#166534">Sí</span>`:`<span style="font-size:.68rem;color:var(--muted)">No</span>`)
+          :`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${clasifica?'var(--green)':'var(--border)'}"></span>`;
+        html+=`<tr style="border-bottom:1px solid var(--light)${rank===1&&isLectura?';background:#FEFCE8':''}">
           <td style="padding:8px 12px"><span style="width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;${posStyle}">${rank||'—'}</span></td>
-          <td style="padding:8px 12px;font-weight:600">${p.apellido}${p.nombre?' '+p.nombre:''}${p.ejemplar?' <span style="font-weight:400;color:var(--muted)">· '+p.ejemplar+'</span>':''}</td>
+          <td style="padding:8px 12px;font-weight:600">${nombreCell}</td>
           <td style="padding:8px 12px;text-align:center;font-weight:700;color:var(--navy)">${tot>0?tot.toFixed(1):'—'}</td>
-          <td style="padding:8px 12px;text-align:center"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${clasifica?'var(--green)':'var(--border)'}"></span></td>
+          <td style="padding:8px 12px;text-align:center">${clasificaCell}</td>
         </tr>`;
       });
       html+=`</tbody></table>`;
